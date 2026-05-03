@@ -1,0 +1,438 @@
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Plus, Search, ChevronLeft, ChevronRight, Lightbulb, Trash2, Calendar as CalendarIcon, ShoppingCart, CheckCircle2, X } from 'lucide-react';
+import { format, addDays, startOfToday, isSameDay, parseISO } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { useStore } from '../store';
+import { Recette, PlanningEntry } from '../types';
+
+export function PlanningPage() {
+  const { state, setPlanningEntry, addToShoppingList } = useStore();
+  const [isAssigning, setIsAssigning] = useState<{ date: string } | null>(null);
+  const [selectedSuggest, setSelectedSuggest] = useState<PlanningEntry | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [newSuggestion, setNewSuggestion] = useState('');
+  const [showShoppingTools, setShowShoppingTools] = useState(false);
+  const [selectedForShopping, setSelectedForShopping] = useState<string[]>([]);
+
+  const today = startOfToday();
+  const days = Array.from({ length: 14 }).map((_, i) => addDays(today, i));
+
+  const filteredRecettes = state.recettes.filter(r => 
+    r.nom.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const planningDays = useMemo(() => {
+    return days.map(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const entry = state.planning.find(p => p.date === dateStr);
+      const recette = entry?.recetteId ? state.recettes.find(r => r.id === entry.recetteId) : null;
+      return { day, dateStr, entry, recette };
+    }).filter(d => d.recette !== null);
+  }, [days, state.planning, state.recettes]);
+
+  const handleAssign = (recetteId: string | null, suggestion: string | null) => {
+    if (isAssigning) {
+      setPlanningEntry(isAssigning.date, recetteId, suggestion);
+      setIsAssigning(null);
+      setSearchTerm('');
+    }
+  };
+
+  const handleAssignSuggestToDate = (date: string) => {
+    if (selectedSuggest) {
+      setPlanningEntry(date, selectedSuggest.recetteId, selectedSuggest.suggestionLibre);
+      setSelectedSuggest(null);
+    }
+  };
+
+  const handleAddAllToShopping = () => {
+    const selectedEntries = planningDays.filter(p => selectedForShopping.includes(p.dateStr));
+    selectedEntries.forEach(entry => {
+      if (entry.recette) {
+        addToShoppingList(entry.recette.ingredients);
+      }
+    });
+    setShowShoppingTools(false);
+    setSelectedForShopping([]);
+    alert(`${selectedEntries.length} repas ajoutés à votre liste de courses !`);
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="space-y-8"
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Planning Repas</h2>
+          <p className="text-sm text-slate-500">Planifiez vos 14 prochains jours de cuisine</p>
+        </div>
+        <div className="flex gap-2">
+          {planningDays.length > 0 && (
+            <button 
+              onClick={() => {
+                setShowShoppingTools(true);
+                setSelectedForShopping(planningDays.map(p => p.dateStr));
+              }}
+              className="btn-primary"
+            >
+              <ShoppingCart size={18} />
+              <span>Générer ma liste</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4">
+        {days.map((day) => {
+          const dateStr = format(day, 'yyyy-MM-dd');
+          const entry = state.planning.find(p => p.date === dateStr);
+          const recette = entry?.recetteId ? state.recettes.find(r => r.id === entry.recetteId) : null;
+          const isToday = isSameDay(day, today);
+
+          return (
+            <div 
+              key={dateStr}
+              onClick={() => {
+                if (selectedSuggest) {
+                  handleAssignSuggestToDate(dateStr);
+                } else {
+                  setIsAssigning({ date: dateStr });
+                }
+              }}
+              className={`relative group bg-white border rounded-xl p-4 min-h-[130px] shadow-sm hover:shadow-md transition-all cursor-pointer ${
+                isToday ? 'border-blue-600 ring-1 ring-blue-600/10' : 'border-slate-200 hover:border-blue-300'
+              } ${selectedSuggest ? 'ring-2 ring-blue-500 ring-offset-2 animate-pulse' : ''}`}
+            >
+              <div className="flex justify-between items-center mb-3">
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? 'text-blue-600' : 'text-slate-400'}`}>
+                  {format(day, 'EEE', { locale: fr }).replace('.', '')}
+                </span>
+                <span className={`text-xs font-bold ${isToday ? 'bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center' : 'text-slate-900'}`}>
+                  {format(day, 'd')}
+                </span>
+              </div>
+
+              {recette ? (
+                <div className="space-y-2">
+                  <div className="relative w-full h-14 rounded-lg overflow-hidden border border-slate-100 shadow-sm">
+                    <img 
+                      src={recette.image || `https://picsum.photos/seed/${recette.id}/100/100`} 
+                      className="w-full h-full object-cover" 
+                      alt=""
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-800 leading-tight line-clamp-2 uppercase">
+                    {recette.nom}
+                  </p>
+                </div>
+              ) : entry?.suggestionLibre ? (
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600 leading-tight uppercase">
+                  {entry.suggestionLibre}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Plus className="text-slate-300" size={20} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {selectedSuggest && (
+        <motion.div 
+          initial={{ y: 20, opacity: 0 }} 
+          animate={{ y: 0, opacity: 1 }} 
+          className="bg-blue-600 p-4 rounded-xl flex items-center justify-between text-white shadow-lg sticky bottom-4 z-50 mx-auto max-w-lg"
+        >
+          <div className="flex items-center gap-3">
+             <Plus size={20} />
+             <span className="text-sm font-bold">Sélectionnez une date pour placer : {selectedSuggest.suggestionLibre || state.recettes.find(r => r.id === selectedSuggest.recetteId)?.nom}</span>
+          </div>
+          <button onClick={() => setSelectedSuggest(null)} className="p-1 hover:bg-white/20 rounded-full">
+            <X size={20} />
+          </button>
+        </motion.div>
+      )}
+
+      <div className="space-y-6 pt-10 border-t border-slate-200">
+        <div className="flex justify-between items-center">
+          <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <Lightbulb className="text-yellow-500" size={20} strokeWidth={2.5} />
+            Suggestions de repas
+          </h3>
+          <button 
+            onClick={() => setIsAssigning({ date: 'suggest' })}
+            className="btn-secondary text-xs"
+          >
+            Ajouter une suggestion
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {state.planning.filter(p => p.date === 'suggest' || p.date === 'add_from_suggest').map((suggest, idx) => {
+            const r = suggest.recetteId ? state.recettes.find(rec => rec.id === suggest.recetteId) : null;
+            return (
+              <div key={idx} className="card p-5 space-y-4 relative group hover:shadow-md transition-all">
+                <button 
+                  onClick={() => setPlanningEntry(suggest.date, null, null)}
+                  className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <Trash2 size={16} />
+                </button>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-100 shadow-sm">
+                    <img src={r?.image || `https://picsum.photos/seed/${idx}/48/48`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900 text-sm leading-tight">{r?.nom || suggest.suggestionLibre}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{r?.categorie || 'IDÉE LIBRE'}</p>
+                  </div>
+                </div>
+                <button 
+                  className="w-full py-2 bg-slate-50 border border-slate-100 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-1"
+                  onClick={() => setSelectedSuggest(suggest)}
+                >
+                  <Plus size={14} />
+                  Planifier ce repas
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {/* Shopping selection Modal */}
+        {showShoppingTools && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowShoppingTools(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative bg-white w-full max-w-lg rounded-3xl p-8 shadow-2xl flex flex-col max-h-[85vh]"
+            >
+              <div className="flex justify-between items-center mb-6">
+                 <div>
+                    <h3 className="text-xl font-bold text-slate-900">Préparer ma liste</h3>
+                    <p className="text-xs text-slate-400 font-medium">Sélectionnez les repas à ajouter</p>
+                 </div>
+                 <button onClick={() => setShowShoppingTools(false)} className="p-2 hover:bg-slate-50 rounded-full">
+                    <X size={20} />
+                 </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide py-2">
+                {planningDays.map((p) => (
+                  <button 
+                    key={p.dateStr}
+                    onClick={() => {
+                      setSelectedForShopping(prev => 
+                        prev.includes(p.dateStr) 
+                        ? prev.filter(d => d !== p.dateStr) 
+                        : [...prev, p.dateStr]
+                      );
+                    }}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
+                      selectedForShopping.includes(p.dateStr) 
+                      ? 'border-blue-200 bg-blue-50/50' 
+                      : 'border-slate-100 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                       <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-slate-100">
+                         <img src={p.recette?.image} className="w-full h-full object-cover" alt="" />
+                       </div>
+                       <div className="text-left">
+                         <p className="text-xs font-bold text-slate-900 line-clamp-1">{p.recette?.nom}</p>
+                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">
+                           {format(parseISO(p.dateStr), 'EEEE d MMMM', { locale: fr })}
+                         </p>
+                       </div>
+                    </div>
+                    <div className={selectedForShopping.includes(p.dateStr) ? 'text-blue-600' : 'text-slate-200'}>
+                      <CheckCircle2 size={24} strokeWidth={2.5} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-8 border-t border-slate-50 flex flex-col gap-3">
+                 <div className="flex justify-between items-center px-2">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedForShopping.length} repas sélectionnés</span>
+                    <button 
+                      onClick={() => setSelectedForShopping(selectedForShopping.length === planningDays.length ? [] : planningDays.map(p => p.dateStr))}
+                      className="text-[10px] font-black text-blue-600 uppercase tracking-tighter"
+                    >
+                      {selectedForShopping.length === planningDays.length ? 'Tout décocher' : 'Tout cocher'}
+                    </button>
+                 </div>
+                 <button 
+                  disabled={selectedForShopping.length === 0}
+                  onClick={handleAddAllToShopping}
+                  className="w-full btn-primary justify-center shadow-lg shadow-blue-500/20 py-4"
+                 >
+                   Envoyer à la liste de courses
+                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isAssigning && isAssigning.date !== 'suggest' && isAssigning.date !== 'add_from_suggest' && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAssigning(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-gray-900">Programmer un repas</h3>
+                <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                   {format(parseISO(isAssigning.date), 'EEEE d MMMM', { locale: fr })}
+                </span>
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                  autoFocus
+                  type="text" 
+                  placeholder="Rechercher une recette ou saisie libre..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && searchTerm) handleAssign(null, searchTerm);
+                  }}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                />
+              </div>
+
+              <div className="max-h-64 overflow-y-auto space-y-2 pr-1 -mr-1">
+                {filteredRecettes.length > 0 ? (
+                  filteredRecettes.map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => handleAssign(r.id, null)}
+                      className="w-full flex items-center gap-3 p-3 rounded-2xl border border-gray-50 hover:border-blue-200 hover:bg-blue-50 transition-all text-left group"
+                    >
+                      <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
+                        <img src={r.image || `https://picsum.photos/seed/${r.id}/40/40`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors">{r.nom}</p>
+                        <p className="text-[10px] text-gray-400 uppercase font-bold">{r.categorie}</p>
+                      </div>
+                      <ChevronRight className="text-gray-300 group-hover:text-blue-400" size={18} />
+                    </button>
+                  ))
+                ) : searchTerm.length > 0 ? (
+                  <button 
+                    onClick={() => handleAssign(null, searchTerm)}
+                    className="w-full p-4 border border-dashed border-blue-200 rounded-2xl text-blue-600 font-bold hover:bg-blue-50 transition-all text-center"
+                  >
+                    Ajouter "{searchTerm}" comme idée libre
+                  </button>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <CalendarIcon className="mx-auto mb-2 opacity-50" size={32} />
+                    <p className="text-xs">Tapez pour une idée libre ou choisissez une recette</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setIsAssigning(null)} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-all">Annuler</button>
+                <button 
+                  onClick={() => handleAssign(null, null)}
+                  className="flex-1 py-3 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-100 transition-all"
+                >
+                  Effacer
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isAssigning && isAssigning.date === 'suggest' && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAssigning(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-6"
+            >
+               <h3 className="text-xl font-bold text-gray-900">Nouvelle suggestion</h3>
+               
+               <div className="space-y-4">
+                 <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Choisir une recette existante</label>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {state.recettes.map(r => (
+                        <button 
+                         key={r.id}
+                         onClick={() => {
+                           setPlanningEntry('suggest', r.id, null);
+                           setIsAssigning(null);
+                         }}
+                         className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 text-left"
+                        >
+                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100">
+                            <img src={r.image || `https://picsum.photos/seed/${r.id}/32/32`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                          </div>
+                          <span className="text-sm font-medium">{r.nom}</span>
+                        </button>
+                      ))}
+                    </div>
+                 </div>
+
+                 <div className="relative flex items-center gap-2">
+                   <div className="h-px flex-1 bg-gray-100"></div>
+                   <span className="text-[10px] font-bold text-gray-300">OU</span>
+                   <div className="h-px flex-1 bg-gray-100"></div>
+                 </div>
+
+                 <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Idée libre</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={newSuggestion}
+                        onChange={(e) => setNewSuggestion(e.target.value)}
+                        placeholder="ex: Commande de sushis"
+                        className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
+                      />
+                      <button 
+                        onClick={() => {
+                          if (newSuggestion) {
+                            setPlanningEntry('suggest', null, newSuggestion);
+                            setNewSuggestion('');
+                            setIsAssigning(null);
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold"
+                      >
+                        <Plus size={18} />
+                      </button>
+                    </div>
+                 </div>
+               </div>
+
+               <button onClick={() => setIsAssigning(null)} className="w-full py-3 bg-gray-100 text-gray-600 rounded-2xl font-bold">Annuler</button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
