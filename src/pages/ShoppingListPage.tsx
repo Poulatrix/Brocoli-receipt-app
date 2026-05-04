@@ -5,14 +5,14 @@ import { useStore } from '../store';
 import { ShoppingItem } from '../types';
 
 export function ShoppingListPage() {
-  const { state, toggleShoppingItem, deleteShoppingItem, updateShoppingItem, clearShoppingList, clearBoughtItems, addManualShoppingItem } = useStore();
+  const { courses, toggleShoppingItem, deleteShoppingItem, updateShoppingItem, clearShoppingList, clearBoughtItems, addManualShoppingItem } = useStore();
   const [newItemName, setNewItemName] = useState('');
   const [newItemQty, setNewItemQty] = useState<number>(1);
   const [newItemUnit, setNewItemUnit] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState({ nom: '', quantite: 0, unite: '' });
 
-  const hasBoughtItems = useMemo(() => state.courses.some(c => c.achete), [state.courses]);
+  const hasBoughtItems = useMemo(() => courses.some(c => c.achete), [courses]);
 
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +58,7 @@ export function ShoppingListPage() {
   };
 
   const handleShare = () => {
-    const text = state.courses
+    const text = courses
       .map(c => `${c.achete ? '[X]' : '[ ]'} ${c.quantite} ${c.unite} ${c.nom}`)
       .join('\n');
     
@@ -130,7 +130,7 @@ export function ShoppingListPage() {
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Ma Liste de Courses</h2>
           <p className="text-sm text-slate-500">
-            {state.courses.length} articles au total — {state.courses.filter(c => c.achete).length} achetés
+            {courses.length} articles au total — {courses.filter(c => c.achete).length} achetés
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -175,7 +175,7 @@ export function ShoppingListPage() {
           <input 
             type="text" 
             placeholder="Ajouter un article (ex: Pommes)..."
-            value={newItemName}
+            value={newItemName || ''}
             onChange={(e) => setNewItemName(e.target.value)}
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
           />
@@ -185,7 +185,7 @@ export function ShoppingListPage() {
           <input 
             type="number" 
             step="any"
-            value={newItemQty}
+            value={newItemQty ?? 1}
             onChange={(e) => setNewItemQty(parseFloat(e.target.value) || 0)}
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
           />
@@ -195,7 +195,7 @@ export function ShoppingListPage() {
           <input 
             type="text" 
             placeholder="g, kg, pces..."
-            value={newItemUnit}
+            value={newItemUnit || ''}
             onChange={(e) => setNewItemUnit(e.target.value)}
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
           />
@@ -211,7 +211,7 @@ export function ShoppingListPage() {
       </form>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-12">
-        {state.courses.length > 0 ? (
+        {courses.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -223,7 +223,7 @@ export function ShoppingListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {state.courses.map((item) => (
+                {courses.map((item) => (
                   <tr 
                     key={item.id} 
                     className={`group transition-colors ${item.achete ? 'bg-slate-50/40' : 'hover:bg-slate-50/60'}`}
@@ -242,7 +242,7 @@ export function ShoppingListPage() {
                         <input 
                           autoFocus
                           type="text"
-                          value={editValues.nom}
+                          value={editValues.nom || ''}
                           onChange={e => setEditValues({ ...editValues, nom: e.target.value })}
                           className="w-full px-2 py-1 bg-white border border-blue-300 rounded text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
                           onKeyDown={e => e.key === 'Enter' && saveEdit(item.id)}
@@ -263,13 +263,13 @@ export function ShoppingListPage() {
                           <input 
                             type="number"
                             step="any"
-                            value={editValues.quantite}
+                            value={editValues.quantite ?? 0}
                             onChange={e => setEditValues({ ...editValues, quantite: parseFloat(e.target.value) || 0 })}
                             className="w-16 px-1 py-1 bg-white border border-blue-300 rounded text-xs text-right outline-none"
                           />
                           <input 
                             type="text"
-                            value={editValues.unite}
+                            value={editValues.unite || ''}
                             onChange={e => setEditValues({ ...editValues, unite: e.target.value })}
                             className="w-12 px-1 py-1 bg-white border border-blue-300 rounded text-xs outline-none"
                           />
@@ -340,10 +340,10 @@ export function ShoppingListPage() {
         <div className="card p-8 flex flex-col justify-center">
           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Résumé des courses</h4>
           <div className="flex items-center gap-6">
-            <div className="text-5xl font-bold tracking-tighter text-blue-600">{state.courses.length}</div>
+            <div className="text-5xl font-bold tracking-tighter text-blue-600">{courses.length}</div>
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider space-y-1">
-              <p>Restant : <span className="text-slate-900 font-black">{state.courses.filter(c => !c.achete).length}</span></p>
-              <p>Acheté : <span className="text-slate-900 font-black">{state.courses.filter(c => c.achete).length}</span></p>
+              <p>Restant : <span className="text-slate-900 font-black">{courses.filter(c => !c.achete).length}</span></p>
+              <p>Acheté : <span className="text-slate-900 font-black">{courses.filter(c => c.achete).length}</span></p>
             </div>
           </div>
         </div>

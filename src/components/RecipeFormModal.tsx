@@ -135,7 +135,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                 <div className="flex gap-2">
                   <input 
                     type="text" 
-                    value={formData.nom}
+                    value={formData.nom || ''}
                     onChange={e => setFormData(prev => ({ ...prev, nom: e.target.value }))}
                     placeholder="ex: Lasagnes à la bolognaise"
                     className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
@@ -164,7 +164,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                     autoFocus
                     placeholder="Collez ici les ingrédients, instructions ou l'URL de la recette..."
                     rows={4}
-                    value={rawRecipeText}
+                    value={rawRecipeText || ''}
                     onChange={e => setRawRecipeText(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white text-xs focus:ring-2 focus:ring-blue-500/50 outline-none resize-none"
                   />
@@ -231,7 +231,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                 <div className="space-y-2">
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Catégorie</label>
                   <select 
-                    value={formData.categorie}
+                    value={formData.categorie || 'Viande'}
                     onChange={e => setFormData(prev => ({ ...prev, categorie: e.target.value as CategorieRecette }))}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium appearance-none"
                   >
@@ -242,7 +242,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Portions</label>
                   <input 
                     type="number" 
-                    value={formData.portions}
+                    value={formData.portions ?? 0}
                     onChange={e => setFormData(prev => ({ ...prev, portions: parseInt(e.target.value) }))}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
                   />
@@ -257,7 +257,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Prép. (min)</label>
                   <input 
                     type="number" 
-                    value={formData.prepMin}
+                    value={formData.prepMin ?? 0}
                     onChange={e => setFormData(prev => ({ ...prev, prepMin: parseInt(e.target.value) }))}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
                   />
@@ -266,7 +266,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Cuisson (min)</label>
                   <input 
                     type="number" 
-                    value={formData.cuissonMin}
+                    value={formData.cuissonMin ?? 0}
                     onChange={e => setFormData(prev => ({ ...prev, cuissonMin: parseInt(e.target.value) }))}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
                   />
@@ -277,7 +277,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Calories</label>
                 <input 
                   type="number" 
-                  value={formData.calories}
+                  value={formData.calories ?? 0}
                   onChange={e => setFormData(prev => ({ ...prev, calories: parseInt(e.target.value) }))}
                   className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
                   placeholder="Optionnel"
@@ -328,7 +328,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                   <input 
                     type="text" 
                     placeholder="Unité" 
-                    value={ing.unite}
+                    value={ing.unite || ''}
                     onChange={e => {
                       const newIngs = [...(formData.ingredients || [])];
                       newIngs[idx].unite = e.target.value;
@@ -339,7 +339,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                    <input 
                     type="text" 
                     placeholder="Ingrédient" 
-                    value={ing.nom}
+                    value={ing.nom || ''}
                     onChange={e => {
                       const newIngs = [...(formData.ingredients || [])];
                       newIngs[idx].nom = e.target.value;
@@ -389,7 +389,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                       <input 
                         type="text" 
                         placeholder="Titre de l'étape" 
-                        value={inst.titre}
+                        value={inst.titre || ''}
                         onChange={e => {
                           const newInsts = [...(formData.instructions || [])];
                           newInsts[idx].titre = e.target.value;
@@ -401,7 +401,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                     <textarea 
                       placeholder="Décrivez l'étape..." 
                       rows={2}
-                      value={inst.texte}
+                      value={inst.texte || ''}
                       onChange={e => {
                         const newInsts = [...(formData.instructions || [])];
                         newInsts[idx].texte = e.target.value;

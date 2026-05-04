@@ -7,7 +7,7 @@ import { useStore } from '../store';
 import { Recette, PlanningEntry } from '../types';
 
 export function PlanningPage() {
-  const { state, setPlanningEntry, addToShoppingList } = useStore();
+  const { recettes, planning, setPlanningEntry, addToShoppingList } = useStore();
   const [isAssigning, setIsAssigning] = useState<{ date: string } | null>(null);
   const [selectedSuggest, setSelectedSuggest] = useState<PlanningEntry | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,18 +18,18 @@ export function PlanningPage() {
   const today = startOfToday();
   const days = Array.from({ length: 14 }).map((_, i) => addDays(today, i));
 
-  const filteredRecettes = state.recettes.filter(r => 
+  const filteredRecettes = recettes.filter(r => 
     r.nom.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const planningDays = useMemo(() => {
     return days.map(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
-      const entry = state.planning.find(p => p.date === dateStr);
-      const recette = entry?.recetteId ? state.recettes.find(r => r.id === entry.recetteId) : null;
+      const entry = planning.find(p => p.date === dateStr);
+      const recette = entry?.recetteId ? recettes.find(r => r.id === entry.recetteId) : null;
       return { day, dateStr, entry, recette };
     }).filter(d => d.recette !== null);
-  }, [days, state.planning, state.recettes]);
+  }, [days, planning, recettes]);
 
   const handleAssign = (recetteId: string | null, suggestion: string | null) => {
     if (isAssigning) {
@@ -89,8 +89,8 @@ export function PlanningPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4">
         {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd');
-          const entry = state.planning.find(p => p.date === dateStr);
-          const recette = entry?.recetteId ? state.recettes.find(r => r.id === entry.recetteId) : null;
+          const entry = planning.find(p => p.date === dateStr);
+          const recette = entry?.recetteId ? recettes.find(r => r.id === entry.recetteId) : null;
           const isToday = isSameDay(day, today);
 
           return (
@@ -152,7 +152,7 @@ export function PlanningPage() {
         >
           <div className="flex items-center gap-3">
              <Plus size={20} />
-             <span className="text-sm font-bold">Sélectionnez une date pour placer : {selectedSuggest.suggestionLibre || state.recettes.find(r => r.id === selectedSuggest.recetteId)?.nom}</span>
+             <span className="text-sm font-bold">Sélectionnez une date pour placer : {selectedSuggest.suggestionLibre || recettes.find(r => r.id === selectedSuggest.recetteId)?.nom}</span>
           </div>
           <button onClick={() => setSelectedSuggest(null)} className="p-1 hover:bg-white/20 rounded-full">
             <X size={20} />
@@ -175,8 +175,8 @@ export function PlanningPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {state.planning.filter(p => p.date === 'suggest' || p.date === 'add_from_suggest').map((suggest, idx) => {
-            const r = suggest.recetteId ? state.recettes.find(rec => rec.id === suggest.recetteId) : null;
+          {planning.filter(p => p.date === 'suggest' || p.date === 'add_from_suggest').map((suggest, idx) => {
+            const r = suggest.recetteId ? recettes.find(rec => rec.id === suggest.recetteId) : null;
             return (
               <div key={idx} className="card p-5 space-y-4 relative group hover:shadow-md transition-all">
                 <button 
@@ -307,7 +307,7 @@ export function PlanningPage() {
                   autoFocus
                   type="text" 
                   placeholder="Rechercher une recette ou saisie libre..."
-                  value={searchTerm}
+                  value={searchTerm || ''}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && searchTerm) handleAssign(null, searchTerm);
@@ -377,7 +377,7 @@ export function PlanningPage() {
                  <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Choisir une recette existante</label>
                     <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {state.recettes.map(r => (
+                      {recettes.map(r => (
                         <button 
                          key={r.id}
                          onClick={() => {
@@ -406,7 +406,7 @@ export function PlanningPage() {
                     <div className="flex gap-2">
                       <input 
                         type="text" 
-                        value={newSuggestion}
+                        value={newSuggestion || ''}
                         onChange={(e) => setNewSuggestion(e.target.value)}
                         placeholder="ex: Commande de sushis"
                         className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"

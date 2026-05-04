@@ -12,7 +12,7 @@ const CATEGORIES: (CategorieRecette | 'Tout')[] = [
 ];
 
 export function RecipesPage() {
-  const { state, addRecette, updateRecette, deleteRecette, addToShoppingList } = useStore();
+  const { recettes, addRecette, updateRecette, deleteRecette, addToShoppingList } = useStore();
   const [filter, setFilter] = useState<CategorieRecette | 'Tout'>('Tout');
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -20,7 +20,7 @@ export function RecipesPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recette | null>(null);
 
-  const filteredRecettes = state.recettes.filter(r => {
+  const filteredRecettes = recettes.filter(r => {
     const matchesFilter = filter === 'Tout' || r.categorie === filter;
     const matchesSearch = r.nom.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
@@ -43,7 +43,7 @@ export function RecipesPage() {
     } else {
       addRecette({
         ...recette,
-        id: Math.random().toString(36).substr(2, 9),
+        id: crypto.randomUUID(),
         dateCreation: new Date().toISOString()
       });
     }
