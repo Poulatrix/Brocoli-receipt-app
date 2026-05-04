@@ -23,7 +23,7 @@ export default async function handler(
 
   try {
     const responseData = await genAI.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-3-flash-preview",
       contents: [{
         role: 'user',
         parts: [{
@@ -52,7 +52,7 @@ export default async function handler(
       config: {
         responseMimeType: "application/json",
       },
-    } as any); // Cast to any to bypass strict type check for now if SDK version mismatch is occurring
+    });
 
     if (!responseData.text) return response.status(500).json({ error: 'Empty response from Gemini' });
     return response.status(200).json(JSON.parse(responseData.text));
