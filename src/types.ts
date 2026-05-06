@@ -2,15 +2,7 @@
  * Types pour l'application Mes Recettes
  */
 
-export type CategorieRecette = 
-  | 'Viande' 
-  | 'Poisson' 
-  | 'Végétarien' 
-  | 'Pâtes' 
-  | 'Soupe' 
-  | 'Dessert' 
-  | 'Entrée' 
-  | 'Autre';
+export type CategorieRecette = string;
 
 export interface Ingredient {
   id: string;

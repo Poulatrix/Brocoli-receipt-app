@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Search, Plus, LayoutGrid, List, Save, ChefHat } from 'lucide-react';
 import { useStore } from '../store';
@@ -13,18 +13,34 @@ const CATEGORIES: (CategorieRecette | 'Tout')[] = [
 
 export function RecipesPage() {
   const { recettes, addRecette, updateRecette, deleteRecette, addToShoppingList } = useStore();
-  const [filter, setFilter] = useState<CategorieRecette | 'Tout'>('Tout');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [maxTime, setMaxTime] = useState<number>(120);
+
+  const allCategories = useMemo(() => {
+    const hardcoded = ['Viande', 'Poisson', 'Végétarien', 'Pâtes', 'Soupe', 'Dessert', 'Entrée', 'Autre'];
+    const fromRecipes = recettes.map(r => r.categorie).filter(Boolean);
+    return Array.from(new Set([...hardcoded, ...fromRecipes])).sort();
+  }, [recettes]);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedRecipe, setSelectedRecipe] = useState<Recette | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recette | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const filteredRecettes = recettes.filter(r => {
-    const matchesFilter = filter === 'Tout' || r.categorie === filter;
-    const matchesSearch = r.nom.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
+    const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(r.categorie);
+    const matchesSearch = r.nom.toLowerCase().includes(search.toLowerCase()) || 
+                          r.ingredients.some(ing => ing.nom.toLowerCase().includes(search.toLowerCase()));
+    const matchesTime = (r.prepMin + r.cuissonMin) <= maxTime;
+    return matchesCategory && matchesSearch && matchesTime;
   });
+
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+  };
 
   const handleCreate = () => {
     setEditingRecipe(null);
@@ -63,7 +79,12 @@ export function RecipesPage() {
           <p className="text-sm text-slate-500">Gérez votre bibliothèque de saveurs</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="btn-secondary text-sm">Sauvegarder</button>
+          <button 
+            onClick={() => useStore.getState().syncWithSupabase()}
+            className="btn-secondary text-sm"
+          >
+            Actualiser
+          </button>
           <button 
             id="btn-new-recipe"
             onClick={handleCreate}
@@ -75,38 +96,93 @@ export function RecipesPage() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-6 items-center mb-8">
-        <div className="flex flex-wrap gap-2 flex-grow">
-          {CATEGORIES.map((cat) => (
+      <div className="flex flex-col gap-6 mb-8">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="flex flex-wrap gap-2 flex-grow">
             <button
-              key={cat}
-              onClick={() => setFilter(cat)}
+              onClick={() => setSelectedCategories([])}
               className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
-                filter === cat 
+                selectedCategories.length === 0 
                 ? 'bg-slate-900 border-slate-900 text-white' 
                 : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
               }`}
             >
-              {cat}
+              Tout
             </button>
-          ))}
-          <button className="px-4 py-1.5 text-blue-600 text-xs font-semibold hover:underline">+ Ajouter</button>
+            {allCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => toggleCategory(cat)}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
+                  selectedCategories.includes(cat)
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
+                  : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border flex items-center gap-2 ${
+                showFilters || maxTime < 120
+                ? 'bg-slate-100 border-slate-300 text-slate-900' 
+                : 'bg-white border-slate-200 text-blue-600 hover:border-slate-300'
+              }`}
+            >
+              <Plus size={14} /> 
+              {showFilters ? 'Moins de filtres' : 'Plus de filtres'}
+            </button>
+          </div>
+          
+          <div className="bg-slate-200/50 p-1 rounded-lg flex shrink-0 self-end sm:self-auto">
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button 
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}
+            >
+              <List size={16} />
+            </button>
+          </div>
         </div>
-        
-        <div className="bg-slate-200/50 p-1 rounded-lg flex shrink-0">
-          <button 
-            onClick={() => setViewMode('grid')}
-            className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}
+
+        {showFilters && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 overflow-hidden"
           >
-            <LayoutGrid size={16} />
-          </button>
-          <button 
-            onClick={() => setViewMode('list')}
-            className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}
-          >
-            <List size={16} />
-          </button>
-        </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Temps total max ({maxTime} min)</label>
+                {maxTime < 120 && (
+                   <button onClick={() => setMaxTime(120)} className="text-[10px] font-bold text-blue-600 uppercase">Réinitialiser</button>
+                )}
+              </div>
+              <input 
+                type="range" 
+                min="5" 
+                max="120" 
+                step="5"
+                value={maxTime}
+                onChange={(e) => setMaxTime(parseInt(e.target.value))}
+                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1">
+                <span>5min</span>
+                <span>30min</span>
+                <span>60min</span>
+                <span>90min</span>
+                <span>120min+</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       <div className="relative mb-8">

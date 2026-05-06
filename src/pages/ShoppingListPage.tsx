@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingCart, Share2, Printer, Trash2, CheckCircle2, Circle, Plus, X } from 'lucide-react';
+import { ShoppingCart, Share2, Printer, Trash2, CheckCircle2, Circle, Plus, X, Mail, MessageCircle, Copy } from 'lucide-react';
 import { useStore } from '../store';
 import { ShoppingItem } from '../types';
 
@@ -11,6 +11,7 @@ export function ShoppingListPage() {
   const [newItemUnit, setNewItemUnit] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState({ nom: '', quantite: 0, unite: '' });
+  const [showShareMenu, setShowShareMenu] = useState(false);
 
   const hasBoughtItems = useMemo(() => courses.some(c => c.achete), [courses]);
 
@@ -40,37 +41,112 @@ export function ShoppingListPage() {
   const [showConfirm, setShowConfirm] = useState<{ type: 'bought' | 'all', visible: boolean }>({ type: 'all', visible: false });
 
   const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const listHtml = courses
+      .map(c => `
+        <div style="display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; ${c.achete ? 'color: #999; text-decoration: line-through;' : ''}">
+          <div style="width: 20px; height: 20px; border: 2px solid #ccc; border-radius: 4px; margin-right: 12px; ${c.achete ? 'background: #3b82f6; border-color: #3b82f6;' : ''}"></div>
+          <div style="flex: 1; font-size: 16px;">${c.nom}</div>
+          <div style="font-weight: bold; font-size: 16px;">${c.quantite} ${c.unite}</div>
+        </div>
+      `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Ma Liste de Courses - Mes Recettes Hub</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; }
+            h1 { font-size: 24px; margin-bottom: 8px; }
+            p { color: #64748b; margin-bottom: 30px; font-size: 14px; }
+            .footer { margin-top: 40px; font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px dashed #e2e8f0; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <h1>Ma Liste de Courses</h1>
+          <p>Générée le ${new Date().toLocaleDateString('fr-FR')} • ${courses.length} articles</p>
+          <div>${listHtml}</div>
+          <div class="footer">Mes Recettes Hub - Votre compagnon cuisine</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const getShareText = () => {
+    return `🛒 *MA LISTE DE COURSES*\n\n` + 
+      courses.map(c => `${c.achete ? '✅' : '⬜'} ${c.quantite}${c.unite ? ' ' + c.unite : ''} - ${c.nom}`).join('\n') +
+      `\n\n_Envoyé depuis Mes Recettes Hub_`;
+  };
+
+  const shareViaEmail = () => {
+    const subject = "Ma Liste de Courses";
+    const body = getShareText();
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setShowShareMenu(false);
+  };
+
+  const shareViaMessenger = async () => {
+    const text = getShareText();
+    // Facebook Messenger web share link
+    window.open(`https://www.facebook.com/dialog/send?link=${encodeURIComponent(window.location.href)}&app_id=291494419107518&redirect_uri=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(text)}`, '_blank');
+    
+    // Fallback copy for manual paste
     try {
-      // Small timeout can sometimes help with iframe printing 
-      setTimeout(() => {
-        window.print();
-      }, 200);
-    } catch (e) {
-      console.error('Print failed', e);
-      alert('L\'impression n\'est pas supportée dans cet aperçu. Essayez d\'ouvrir l\'app dans un nouvel onglet.');
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+    } catch (err) {
+      console.error('Copy failed', err);
     }
+    setShowShareMenu(false);
+  };
+
+  const copyToClipboard = async () => {
+    const text = getShareText();
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+      alert('Liste copiée !');
+    } catch (err) {
+      // Fallback
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          alert('Liste copiée !');
+        } else {
+          throw new Error('Fallback failed');
+        }
+      } catch (fallbackErr) {
+        alert('Impossible de copier automatiquement. Veuillez copier manuellement.');
+      }
+    }
+    setShowShareMenu(false);
   };
 
   const confirmAction = () => {
     if (showConfirm.type === 'bought') clearBoughtItems();
     if (showConfirm.type === 'all') clearShoppingList();
     setShowConfirm({ ...showConfirm, visible: false });
-  };
-
-  const handleShare = () => {
-    const text = courses
-      .map(c => `${c.achete ? '[X]' : '[ ]'} ${c.quantite} ${c.unite} ${c.nom}`)
-      .join('\n');
-    
-    if (navigator.share) {
-      navigator.share({
-        title: 'Ma Liste de Courses',
-        text: text,
-      }).catch(err => console.log('Share failed', err));
-    } else {
-      navigator.clipboard.writeText(text);
-      alert('Liste copiée dans le presse-papier !');
-    }
   };
 
   return (
@@ -81,6 +157,72 @@ export function ShoppingListPage() {
       className="space-y-8 pb-20"
     >
       <AnimatePresence>
+        {showShareMenu && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowShareMenu(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              className="relative bg-white rounded-3xl shadow-2xl p-6 w-full max-w-xs space-y-4 overflow-hidden border border-slate-100"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 text-lg">Partager la liste</h3>
+                <button onClick={() => setShowShareMenu(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+                  <X size={18} />
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-2">
+                <button 
+                  onClick={shareViaMessenger}
+                  className="flex items-center gap-4 p-4 hover:bg-blue-50 rounded-2xl transition-all group text-left border border-transparent hover:border-blue-100"
+                >
+                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                    <MessageCircle size={24} fill="currentColor" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-900 text-sm">Messenger</p>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Envoyer via Facebook</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={shareViaEmail}
+                  className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-all group text-left border border-transparent hover:border-slate-100"
+                >
+                  <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                    <Mail size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-900 text-sm">E-mail</p>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Partager par courriel</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={copyToClipboard}
+                  className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-all group text-left border border-transparent hover:border-slate-100"
+                >
+                  <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                    <Copy size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-900 text-sm">Copier le texte</p>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Prese-papier</p>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {showConfirm.visible && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
@@ -137,23 +279,22 @@ export function ShoppingListPage() {
           {hasBoughtItems && (
             <button 
               onClick={() => setShowConfirm({ type: 'bought', visible: true })}
-              className="btn-secondary text-blue-600 bg-blue-50 border-blue-100 hover:bg-blue-100 shadow-sm"
-              title="Nettoyer la liste"
+              className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors border border-blue-100 shadow-sm"
+              title="Nettoyer les articles achetés"
             >
               <CheckCircle2 size={18} />
-              <span className="hidden sm:inline">Vider les achetés</span>
             </button>
           )}
           <button 
-            onClick={handleShare}
-            className="btn-secondary p-2.5 shadow-sm"
+            onClick={() => setShowShareMenu(true)}
+            className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
             title="Partager"
           >
             <Share2 size={18} />
           </button>
           <button 
             onClick={handlePrint}
-            className="btn-secondary p-2.5 shadow-sm"
+            className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
             title="Imprimer"
           >
             <Printer size={18} />
@@ -161,10 +302,10 @@ export function ShoppingListPage() {
           <button 
             type="button"
             onClick={() => setShowConfirm({ type: 'all', visible: true })}
-            className="btn-secondary border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 shadow-sm"
+            className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-colors shadow-sm"
+            title="Tout effacer"
           >
             <Trash2 size={18} />
-            <span className="hidden sm:inline">Tout effacer</span>
           </button>
         </div>
       </div>

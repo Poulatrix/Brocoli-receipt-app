@@ -22,6 +22,35 @@ export function PlanningPage() {
     r.nom.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const autoSuggestions = useMemo(() => {
+    const realPlanning = planning.filter(p => !p.date.startsWith('1900-'));
+    const lastUsedMap = new Map<string, string>();
+    
+    realPlanning.forEach(p => {
+      if (p.recetteId) {
+        const existing = lastUsedMap.get(p.recetteId);
+        if (!existing || p.date > existing) {
+          lastUsedMap.set(p.recetteId, p.date);
+        }
+      }
+    });
+
+    const existingSuggestIds = new Set(
+      planning
+        .filter(p => p.date.startsWith('1900-') && p.recetteId)
+        .map(p => p.recetteId)
+    );
+
+    return [...recettes]
+      .filter(r => !existingSuggestIds.has(r.id))
+      .sort((a, b) => {
+        const lastA = lastUsedMap.get(a.id) || '0000-00-00';
+        const lastB = lastUsedMap.get(b.id) || '0000-00-00';
+        return lastA.localeCompare(lastB);
+      })
+      .slice(0, 4);
+  }, [recettes, planning]);
+
   const planningDays = useMemo(() => {
     return days.map(day => {
       const dateStr = format(day, 'yyyy-MM-dd');
@@ -33,7 +62,23 @@ export function PlanningPage() {
 
   const handleAssign = (recetteId: string | null, suggestion: string | null) => {
     if (isAssigning) {
-      setPlanningEntry(isAssigning.date, recetteId, suggestion);
+      const isSuggestMode = isAssigning.date === 'suggest';
+      const date = isSuggestMode 
+        ? `1900-${(Math.floor(Math.random() * 12) + 1).toString().padStart(2, '0')}-${(Math.floor(Math.random() * 28) + 1).toString().padStart(2, '0')}`
+        : isAssigning.date;
+      
+      // If adding to real planning (not suggest), check if it exists in suggestions and remove it
+      if (!isSuggestMode) {
+        const existingSuggestion = planning.find(p => 
+          p.date.startsWith('1900-') && 
+          ((recetteId && p.recetteId === recetteId) || (suggestion && p.suggestionLibre === suggestion))
+        );
+        if (existingSuggestion) {
+          setPlanningEntry(existingSuggestion.date, null, null);
+        }
+      }
+
+      setPlanningEntry(date, recetteId, suggestion);
       setIsAssigning(null);
       setSearchTerm('');
     }
@@ -42,6 +87,8 @@ export function PlanningPage() {
   const handleAssignSuggestToDate = (date: string) => {
     if (selectedSuggest) {
       setPlanningEntry(date, selectedSuggest.recetteId, selectedSuggest.suggestionLibre);
+      // Remove from suggestions list
+      setPlanningEntry(selectedSuggest.date, null, null);
       setSelectedSuggest(null);
     }
   };
@@ -131,8 +178,18 @@ export function PlanningPage() {
                   </p>
                 </div>
               ) : entry?.suggestionLibre ? (
-                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600 leading-tight uppercase">
-                  {entry.suggestionLibre}
+                <div className="space-y-2">
+                   <div className="relative w-full h-14 rounded-lg overflow-hidden border border-slate-100 shadow-sm bg-slate-50">
+                    <img 
+                      src={`https://loremflickr.com/100/100/food,${encodeURIComponent(entry.suggestionLibre.split(' ')[0])}?lock=${entry.date.length}`} 
+                      className="w-full h-full object-cover opacity-80" 
+                      alt=""
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <div className="text-[9px] font-bold text-slate-600 leading-tight uppercase line-clamp-2">
+                    {entry.suggestionLibre}
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -175,10 +232,10 @@ export function PlanningPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {planning.filter(p => p.date === 'suggest' || p.date === 'add_from_suggest').map((suggest, idx) => {
+          {planning.filter(p => p.date.startsWith('1900-')).map((suggest, idx) => {
             const r = suggest.recetteId ? recettes.find(rec => rec.id === suggest.recetteId) : null;
             return (
-              <div key={idx} className="card p-5 space-y-4 relative group hover:shadow-md transition-all">
+              <div key={suggest.date} className="card p-5 space-y-4 relative group hover:shadow-md transition-all">
                 <button 
                   onClick={() => setPlanningEntry(suggest.date, null, null)}
                   className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
@@ -187,7 +244,12 @@ export function PlanningPage() {
                 </button>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-100 shadow-sm">
-                    <img src={r?.image || `https://picsum.photos/seed/${idx}/48/48`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                    <img 
+                      src={r?.image || (suggest.suggestionLibre ? `https://loremflickr.com/200/200/food,${encodeURIComponent(suggest.suggestionLibre.split(' ')[0])}?lock=${suggest.date.length}` : `https://picsum.photos/seed/${idx}/48/48`)} 
+                      className="w-full h-full object-cover" 
+                      alt="" 
+                      referrerPolicy="no-referrer" 
+                    />
                   </div>
                   <div>
                     <p className="font-bold text-slate-900 text-sm leading-tight">{r?.nom || suggest.suggestionLibre}</p>
@@ -204,6 +266,42 @@ export function PlanningPage() {
               </div>
             );
           })}
+
+          {/* Auto Suggestions (Grisées) */}
+          {autoSuggestions.map((r, idx) => (
+            <div 
+              key={`auto-${r.id}`} 
+              className="card p-5 space-y-4 relative group opacity-60 hover:opacity-100 transition-all border-dashed border-slate-200 cursor-pointer hover:border-blue-200"
+              onClick={() => {
+                const now = new Date();
+                const timestampDate = `1900-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}.${now.getMilliseconds()}`;
+                // Using a slightly more unique but valid-ish format if allowed, or just 1900 and trust uuid if column is text
+                // If it's DATE type, we must use YYYY-MM-DD. Let's use a unique sequence for suggestions.
+                const uniqueSuggestDate = `1900-01-${(planning.filter(p => p.date.startsWith('1900-')).length + 1).toString().padStart(2, '0')}`;
+                // Actually, let's use a random day in year 1900 to avoid collisions
+                const randomDay = Math.floor(Math.random() * 28) + 1;
+                const randomMonth = Math.floor(Math.random() * 12) + 1;
+                const dateString = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
+                setPlanningEntry(dateString, r.id, null);
+              }}
+            >
+              <div className="absolute -top-2 -right-2 bg-blue-100 text-blue-600 text-[8px] font-black uppercase tracking-tighter px-2 py-1 rounded-full shadow-sm">
+                Suggestion
+              </div>
+              <div className="flex items-center gap-4 grayscale group-hover:grayscale-0 transition-all">
+                <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-100 shadow-sm">
+                  <img src={r.image || `https://picsum.photos/seed/${idx}/48/48`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-900 text-sm leading-tight">{r.nom}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{r.categorie}</p>
+                </div>
+              </div>
+              <div className="text-[10px] text-slate-400 font-medium text-center italic">
+                Cliquer pour valider cette suggestion
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -376,26 +474,29 @@ export function PlanningPage() {
                <div className="space-y-4">
                  <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Choisir une recette existante</label>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                       {recettes.map(r => (
                         <button 
                          key={r.id}
                          onClick={() => {
-                           setPlanningEntry('suggest', r.id, null);
+                           const randomDay = Math.floor(Math.random() * 28) + 1;
+                           const randomMonth = Math.floor(Math.random() * 12) + 1;
+                           const finalDate = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
+                           setPlanningEntry(finalDate, r.id, null);
                            setIsAssigning(null);
                          }}
-                         className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 text-left"
+                         className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 text-left transition-colors"
                         >
-                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100">
+                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 shrink-0">
                             <img src={r.image || `https://picsum.photos/seed/${r.id}/32/32`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                           </div>
-                          <span className="text-sm font-medium">{r.nom}</span>
+                          <span className="text-sm font-medium line-clamp-1">{r.nom}</span>
                         </button>
                       ))}
                     </div>
                  </div>
 
-                 <div className="relative flex items-center gap-2">
+                 <div className="relative flex items-center gap-2 py-2">
                    <div className="h-px flex-1 bg-gray-100"></div>
                    <span className="text-[10px] font-bold text-gray-300">OU</span>
                    <div className="h-px flex-1 bg-gray-100"></div>
@@ -409,17 +510,31 @@ export function PlanningPage() {
                         value={newSuggestion || ''}
                         onChange={(e) => setNewSuggestion(e.target.value)}
                         placeholder="ex: Commande de sushis"
-                        className="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none"
-                      />
-                      <button 
-                        onClick={() => {
-                          if (newSuggestion) {
-                            setPlanningEntry('suggest', null, newSuggestion);
+                        className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none text-sm"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newSuggestion) {
+                            const randomDay = Math.floor(Math.random() * 28) + 1;
+                            const randomMonth = Math.floor(Math.random() * 12) + 1;
+                            const dateString = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
+                            setPlanningEntry(dateString, null, newSuggestion);
                             setNewSuggestion('');
                             setIsAssigning(null);
                           }
                         }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold"
+                      />
+                      <button 
+                        onClick={() => {
+                          if (newSuggestion) {
+                            const randomDay = Math.floor(Math.random() * 28) + 1;
+                            const randomMonth = Math.floor(Math.random() * 12) + 1;
+                            const dateString = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
+                            setPlanningEntry(dateString, null, newSuggestion);
+                            setNewSuggestion('');
+                            setIsAssigning(null);
+                          }
+                        }}
+                        disabled={!newSuggestion}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50"
                       >
                         <Plus size={18} />
                       </button>
@@ -427,7 +542,7 @@ export function PlanningPage() {
                  </div>
                </div>
 
-               <button onClick={() => setIsAssigning(null)} className="w-full py-3 bg-gray-100 text-gray-600 rounded-2xl font-bold">Annuler</button>
+               <button onClick={() => setIsAssigning(null)} className="w-full py-3 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-colors">Annuler</button>
             </motion.div>
           </div>
         )}

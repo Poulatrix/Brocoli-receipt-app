@@ -195,6 +195,21 @@ export const useStore = create<StoreState & StoreActions>()(
     setPlanningEntry: async (date, recetteId, suggestionLibre) => {
       const userId = get().currentUserId;
       const prevPlanning = get().planning;
+
+      // Handle deletion
+      if (recetteId === null && suggestionLibre === null) {
+        set({ planning: prevPlanning.filter(p => p.date !== date) });
+        if (userId) {
+          try {
+            const { error } = await supabase.from('planning').delete().eq('date', date).eq('user_id', userId);
+            if (error) throw error;
+          } catch (err: any) {
+            set({ planning: prevPlanning, error: err.message });
+          }
+        }
+        return;
+      }
+
       const existingIndex = prevPlanning.findIndex(p => p.date === date);
       const newPlanning = [...prevPlanning];
       const newEntry = { date, recetteId, suggestionLibre };

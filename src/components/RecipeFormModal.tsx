@@ -230,21 +230,35 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Catégorie</label>
-                  <select 
-                    value={formData.categorie || 'Viande'}
-                    onChange={e => setFormData(prev => ({ ...prev, categorie: e.target.value as CategorieRecette }))}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium appearance-none"
-                  >
-                    {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                  </select>
+                  <div className="flex gap-2">
+                    <select 
+                      value={CATEGORIES.includes(formData.categorie as any) ? formData.categorie : 'Autre'}
+                      onChange={e => {
+                        if (e.target.value !== 'Autre') {
+                          setFormData(prev => ({ ...prev, categorie: e.target.value }))
+                        }
+                      }}
+                      className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm h-[42px] font-medium appearance-none"
+                    >
+                      {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                      {!CATEGORIES.includes(formData.categorie as any) && <option value={formData.categorie}>{formData.categorie}</option>}
+                    </select>
+                    <input 
+                      type="text"
+                      placeholder="Ou..."
+                      value={formData.categorie || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, categorie: e.target.value }))}
+                      className="w-24 px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Portions</label>
                   <input 
                     type="number" 
                     value={formData.portions ?? 0}
-                    onChange={e => setFormData(prev => ({ ...prev, portions: parseInt(e.target.value) }))}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                    onChange={e => setFormData(prev => ({ ...prev, portions: parseInt(e.target.value) || 0 }))}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm h-[42px] font-medium"
                   />
                 </div>
               </div>

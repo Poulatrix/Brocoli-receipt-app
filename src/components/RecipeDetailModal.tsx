@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Minus, ShoppingCart, Pencil, Trash2, ChevronRight, Clock, Users, Flame, ChefHat, Share2, ChevronLeft, Printer } from 'lucide-react';
+import { X, Plus, Minus, ShoppingCart, Pencil, Trash2, ChevronRight, Clock, Users, Flame, ChefHat, Share2, ChevronLeft, Printer, Mail, MessageCircle, Copy } from 'lucide-react';
 import { Recette, Ingredient } from '../types';
 
 interface RecipeDetailModalProps {
@@ -16,6 +16,7 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
   const [currentStep, setCurrentStep] = useState(0);
   const [modeCuisine, setModeCuisine] = useState(false);
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
+  const [showShareMenu, setShowShareMenu] = useState(false);
 
   const ratio = portions / recette.portions;
 
@@ -38,33 +39,109 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
-  const handleShare = async () => {
-    const shareData = {
-      title: recette.nom,
-      text: `Découvrez ma recette de ${recette.nom} sur Mes Recettes !`,
-      url: window.location.origin + window.location.pathname + `?recipe=${recette.id}`,
-    };
+  const getShareText = () => {
+    const ingredients = adjustedIngredients
+      .map(ing => `• ${ing.quantite > 0 ? ing.quantite + ' ' : ''}${ing.unite} ${ing.nom}`)
+      .join('\n');
+    
+    return `🥘 *${recette.nom.toUpperCase()}*\n\n` +
+      `🕒 Préparation: ${recette.prepMin}min | Cuisson: ${recette.cuissonMin}min\n` +
+      `👥 Pour ${portions} personnes\n\n` +
+      `*Ingrédients :*\n${ingredients}\n\n` +
+      `*Instructions :*\n${recette.instructions.map((s, i) => `${i+1}. ${s.titre}`).join('\n')}\n\n` +
+      `Retrouvez la recette complète ici : ${window.location.origin}${window.location.pathname}?recipe=${recette.id}\n\n` +
+      `_Partagé via Mes Recettes Hub_`;
+  };
+
+  const shareViaEmail = () => {
+    const subject = `Recette : ${recette.nom}`;
+    const body = getShareText();
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setShowShareMenu(false);
+  };
+
+  const shareViaMessenger = () => {
+    const text = getShareText();
+    const url = `${window.location.origin}${window.location.pathname}?recipe=${recette.id}`;
+    window.open(`https://www.facebook.com/dialog/send?link=${encodeURIComponent(url)}&app_id=291494419107518&redirect_uri=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`, '_blank');
+    setShowShareMenu(false);
+  };
+
+  const copyToClipboard = async () => {
+    const text = getShareText();
     try {
-      if (navigator.share) {
-        await navigator.share(shareData);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
       } else {
-        await navigator.clipboard.writeText(shareData.url);
-        alert('Lien de la recette copié !');
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
       }
+      alert('Recette copiée dans le presse-papier !');
     } catch (err) {
-      console.error('Share failed', err);
+      alert('Erreur lors de la copie.');
+    }
+    setShowShareMenu(false);
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: recette.nom,
+        text: `Découvrez ma recette de ${recette.nom} !`,
+        url: `${window.location.origin}${window.location.pathname}?recipe=${recette.id}`
+      }).catch(err => {
+        if (err.name !== 'AbortError') setShowShareMenu(true);
+      });
+    } else {
+      setShowShareMenu(true);
     }
   };
 
   const handlePrint = () => {
-    try {
-      setTimeout(() => {
-        window.print();
-      }, 200);
-    } catch (e) {
-      console.error('Print failed', e);
-      alert('L\'impression n\'est pas supportée dans cet aperçu.');
-    }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const ingredientsHtml = adjustedIngredients
+      .map(ing => `<li>${ing.quantite > 0 ? ing.quantite + ' ' : ''}${ing.unite} ${ing.nom}</li>`)
+      .join('');
+    
+    const instructionsHtml = recette.instructions
+      .map((s, i) => `<h3>${i+1}. ${s.titre}</h3><p>${s.texte}</p>`)
+      .join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${recette.nom} - Mes Recettes Hub</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; color: #1e293b; line-height: 1.6; }
+            h1 { font-size: 32px; color: #0f172a; margin-bottom: 8px; }
+            .meta { color: #64748b; font-size: 14px; margin-bottom: 30px; border-bottom: 1px solid #e2e8f0; padding-bottom: 20px; }
+            h2 { border-bottom: 2px solid #3b82f6; display: inline-block; padding-bottom: 4px; margin-top: 30px; }
+            ul { list-style: none; padding: 0; }
+            li { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+            .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px dashed #e2e8f0; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <h1>${recette.nom}</h1>
+          <div class="meta">
+            ${recette.prepMin} min prép • ${recette.cuissonMin} min cuisson • Pour ${portions} personnes
+          </div>
+          <h2>Ingrédients</h2>
+          <ul>${ingredientsHtml}</ul>
+          <h2>Instructions</h2>
+          <div>${instructionsHtml}</div>
+          <div class="footer">Mes Recettes Hub - Votre compagnon cuisine</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   const confirmDelete = () => {
@@ -75,6 +152,72 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-8">
       <AnimatePresence>
+        {showShareMenu && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowShareMenu(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              className="relative bg-white rounded-3xl shadow-2xl p-6 w-full max-w-xs space-y-4 overflow-hidden border border-slate-100 text-center"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 text-lg">Partager la recette</h3>
+                <button onClick={() => setShowShareMenu(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+                  <X size={18} />
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-2">
+                <button 
+                  onClick={shareViaMessenger}
+                  className="flex items-center gap-4 p-4 hover:bg-blue-50 rounded-2xl transition-all group text-left border border-transparent hover:border-blue-100"
+                >
+                  <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                    <MessageCircle size={24} fill="currentColor" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-900 text-sm">Messenger</p>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Envoyer via Facebook</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={shareViaEmail}
+                  className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-all group text-left border border-transparent hover:border-slate-100"
+                >
+                  <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                    <Mail size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-900 text-sm">E-mail</p>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Partager par courriel</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={copyToClipboard}
+                  className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-all group text-left border border-transparent hover:border-slate-100"
+                >
+                  <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                    <Copy size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-900 text-sm">Copier le texte</p>
+                    <p className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Prese-papier</p>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {showConfirmDelete && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
