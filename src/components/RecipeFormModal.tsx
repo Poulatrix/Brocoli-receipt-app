@@ -138,7 +138,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                     value={formData.nom || ''}
                     onChange={e => setFormData(prev => ({ ...prev, nom: e.target.value }))}
                     placeholder="ex: Lasagnes à la bolognaise"
-                    className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                    className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium"
                   />
                   <button 
                     type="button"
@@ -166,7 +166,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                     rows={4}
                     value={rawRecipeText || ''}
                     onChange={e => setRawRecipeText(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white text-xs focus:ring-2 focus:ring-blue-500/50 outline-none resize-none"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white text-xs focus:ring-2 focus:ring-emerald-500/50 outline-none resize-none"
                   />
                   <button 
                     type="button"
@@ -184,7 +184,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Image</label>
                 <div 
                   className={`relative h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all ${
-                    dragActive ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'
+                    dragActive ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
                   } overflow-hidden`}
                   onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                   onDragLeave={() => setDragActive(false)}
@@ -238,7 +238,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                           setFormData(prev => ({ ...prev, categorie: e.target.value }))
                         }
                       }}
-                      className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm h-[42px] font-medium appearance-none"
+                      className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm h-[42px] font-medium appearance-none"
                     >
                       {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                       {!CATEGORIES.includes(formData.categorie as any) && <option value={formData.categorie}>{formData.categorie}</option>}
@@ -248,7 +248,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                       placeholder="Ou..."
                       value={formData.categorie || ''}
                       onChange={e => setFormData(prev => ({ ...prev, categorie: e.target.value }))}
-                      className="w-24 px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                      className="w-24 px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium"
                     />
                   </div>
                 </div>
@@ -258,7 +258,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                     type="number" 
                     value={formData.portions ?? 0}
                     onChange={e => setFormData(prev => ({ ...prev, portions: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm h-[42px] font-medium"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm h-[42px] font-medium"
                   />
                 </div>
               </div>
@@ -273,7 +273,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                     type="number" 
                     value={formData.prepMin ?? 0}
                     onChange={e => setFormData(prev => ({ ...prev, prepMin: parseInt(e.target.value) }))}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium"
                   />
                 </div>
                 <div className="space-y-2">
@@ -282,7 +282,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                     type="number" 
                     value={formData.cuissonMin ?? 0}
                     onChange={e => setFormData(prev => ({ ...prev, cuissonMin: parseInt(e.target.value) }))}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium"
                   />
                 </div>
               </div>
@@ -293,21 +293,21 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                   type="number" 
                   value={formData.calories ?? 0}
                   onChange={e => setFormData(prev => ({ ...prev, calories: parseInt(e.target.value) }))}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium"
                   placeholder="Optionnel"
                 />
               </div>
 
-              <div className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
+              <div className="flex items-center gap-3 p-4 bg-emerald-50/50 rounded-xl border border-emerald-100">
                 <input 
                   type="checkbox"
                   checked={formData.estIA}
                   onChange={e => setFormData(prev => ({ ...prev, estIA: e.target.checked }))}
-                  className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 border-slate-200"
+                  className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-200"
                 />
                 <div>
-                  <span className="block font-bold text-blue-900 text-sm">Recette IA</span>
-                  <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Identifiée par intelligence artificielle</span>
+                  <span className="block font-bold text-emerald-900 text-sm">Recette IA</span>
+                  <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Identifiée par intelligence artificielle</span>
                 </div>
               </div>
             </div>
@@ -320,7 +320,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
               <button 
                 type="button" 
                 onClick={addIngredient}
-                className="text-blue-600 hover:text-blue-700 text-xs font-bold flex items-center gap-1 transition-all"
+                className="text-emerald-600 hover:text-emerald-700 text-xs font-bold flex items-center gap-1 transition-all"
               >
                 <Plus size={14} /> Ajouter
               </button>
@@ -337,7 +337,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                       newIngs[idx].quantite = parseFloat(e.target.value) || 0;
                       setFormData(prev => ({ ...prev, ingredients: newIngs }));
                     }}
-                    className="w-20 px-3 py-2 bg-white border border-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500/10 outline-none text-xs font-medium"
+                    className="w-20 px-3 py-2 bg-white border border-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500/10 outline-none text-xs font-medium"
                   />
                   <input 
                     type="text" 
@@ -348,7 +348,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                       newIngs[idx].unite = e.target.value;
                       setFormData(prev => ({ ...prev, ingredients: newIngs }));
                     }}
-                    className="w-20 px-3 py-2 bg-white border border-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500/10 outline-none text-xs font-medium"
+                    className="w-20 px-3 py-2 bg-white border border-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500/10 outline-none text-xs font-medium"
                   />
                    <input 
                     type="text" 
@@ -359,7 +359,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                       newIngs[idx].nom = e.target.value;
                       setFormData(prev => ({ ...prev, ingredients: newIngs }));
                     }}
-                    className="flex-1 px-3 py-2 bg-white border border-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500/10 outline-none text-xs font-medium"
+                    className="flex-1 px-3 py-2 bg-white border border-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500/10 outline-none text-xs font-medium"
                   />
                   <button 
                     type="button" 
@@ -380,7 +380,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
               <button 
                 type="button" 
                 onClick={addInstruction}
-                className="text-blue-600 hover:text-blue-700 text-xs font-bold flex items-center gap-1 transition-all"
+                className="text-emerald-600 hover:text-emerald-700 text-xs font-bold flex items-center gap-1 transition-all"
               >
                 <Plus size={14} /> Ajouter
               </button>
@@ -397,7 +397,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                   </button>
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center font-bold text-blue-600 shadow-sm text-xs">
+                      <span className="w-8 h-8 bg-white border border-slate-200 rounded-full flex items-center justify-center font-bold text-emerald-600 shadow-sm text-xs">
                         {idx + 1}
                       </span>
                       <input 
@@ -409,7 +409,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                           newInsts[idx].titre = e.target.value;
                           setFormData(prev => ({ ...prev, instructions: newInsts }));
                         }}
-                        className="flex-1 bg-white px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500/10 outline-none text-xs font-bold"
+                        className="flex-1 bg-white px-3 py-2 border border-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500/10 outline-none text-xs font-bold"
                       />
                     </div>
                     <textarea 
@@ -421,7 +421,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                         newInsts[idx].texte = e.target.value;
                         setFormData(prev => ({ ...prev, instructions: newInsts }));
                       }}
-                      className="w-full bg-white px-4 py-3 border border-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500/10 outline-none text-xs font-medium leading-relaxed resize-none"
+                      className="w-full bg-white px-4 py-3 border border-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500/10 outline-none text-xs font-medium leading-relaxed resize-none"
                     />
                   </div>
                 </div>

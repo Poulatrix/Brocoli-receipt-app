@@ -21,7 +21,7 @@ export function SettingsPage() {
       <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-8">
         {/* Profile Section */}
         <div className="flex items-center gap-6">
-          <div className="w-20 h-20 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 ring-4 ring-blue-50/50">
+          <div className="w-20 h-20 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 ring-4 ring-emerald-50/50">
             <User size={40} />
           </div>
           <div className="space-y-1">
@@ -36,7 +36,7 @@ export function SettingsPage() {
         <div className="grid grid-cols-1 gap-4">
           <div className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-slate-100 transition-colors">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors shadow-sm">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors shadow-sm">
                 <Shield size={20} />
               </div>
               <div className="text-sm">
@@ -48,7 +48,7 @@ export function SettingsPage() {
 
           <div className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-slate-100 transition-colors">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors shadow-sm">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors shadow-sm">
                 <Bell size={20} />
               </div>
               <div className="text-sm">
@@ -60,7 +60,7 @@ export function SettingsPage() {
 
           <div className="p-4 bg-slate-50 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-slate-100 transition-colors">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 group-hover:text-blue-500 transition-colors shadow-sm">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors shadow-sm">
                 <Smartphone size={20} />
               </div>
               <div className="text-sm">

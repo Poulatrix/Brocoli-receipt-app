@@ -56,11 +56,13 @@ export function ShoppingListPage() {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Ma Liste de Courses - Mes Recettes Hub</title>
+          <title>Ma Liste de Courses - BROCOLI</title>
           <style>
             body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; }
             h1 { font-size: 24px; margin-bottom: 8px; }
             p { color: #64748b; margin-bottom: 30px; font-size: 14px; }
+            .checkbox { width: 20px; height: 20px; border: 2px solid #ccc; border-radius: 4px; margin-right: 12px; }
+            .checkbox.checked { background: #10b981; border-color: #10b981; }
             .footer { margin-top: 40px; font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px dashed #e2e8f0; padding-top: 20px; }
           </style>
         </head>
@@ -68,7 +70,7 @@ export function ShoppingListPage() {
           <h1>Ma Liste de Courses</h1>
           <p>Générée le ${new Date().toLocaleDateString('fr-FR')} • ${courses.length} articles</p>
           <div>${listHtml}</div>
-          <div class="footer">Mes Recettes Hub - Votre compagnon cuisine</div>
+          <div class="footer">BROCOLI - Receipt App</div>
         </body>
       </html>
     `);
@@ -79,7 +81,7 @@ export function ShoppingListPage() {
   const getShareText = () => {
     return `🛒 *MA LISTE DE COURSES*\n\n` + 
       courses.map(c => `${c.achete ? '✅' : '⬜'} ${c.quantite}${c.unite ? ' ' + c.unite : ''} - ${c.nom}`).join('\n') +
-      `\n\n_Envoyé depuis Mes Recettes Hub_`;
+      `\n\n_Envoyé depuis BROCOLI_`;
   };
 
   const shareViaEmail = () => {
@@ -279,7 +281,7 @@ export function ShoppingListPage() {
           {hasBoughtItems && (
             <button 
               onClick={() => setShowConfirm({ type: 'bought', visible: true })}
-              className="w-10 h-10 flex items-center justify-center bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors border border-blue-100 shadow-sm"
+              className="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors border border-emerald-100 shadow-sm"
               title="Nettoyer les articles achetés"
             >
               <CheckCircle2 size={18} />
@@ -318,7 +320,7 @@ export function ShoppingListPage() {
             placeholder="Ajouter un article (ex: Pommes)..."
             value={newItemName || ''}
             onChange={(e) => setNewItemName(e.target.value)}
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium"
           />
         </div>
         <div className="w-24">
@@ -328,7 +330,7 @@ export function ShoppingListPage() {
             step="any"
             value={newItemQty ?? 1}
             onChange={(e) => setNewItemQty(parseFloat(e.target.value) || 0)}
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium"
           />
         </div>
         <div className="w-28">
@@ -338,7 +340,7 @@ export function ShoppingListPage() {
             placeholder="g, kg, pces..."
             value={newItemUnit || ''}
             onChange={(e) => setNewItemUnit(e.target.value)}
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium"
           />
         </div>
         <button 
@@ -372,7 +374,7 @@ export function ShoppingListPage() {
                     <td className="px-6 py-4 text-center">
                       <button 
                         onClick={() => toggleShoppingItem(item.id)}
-                        className={`transition-colors flex justify-center w-full ${item.achete ? 'text-blue-600' : 'text-slate-200 hover:text-slate-400'}`}
+                        className={`transition-colors flex justify-center w-full ${item.achete ? 'text-emerald-500' : 'text-slate-200 hover:text-slate-400'}`}
                         title={item.achete ? 'Marquer comme non acheté' : 'Marquer comme acheté'}
                       >
                         {item.achete ? <CheckCircle2 size={22} strokeWidth={2.5} /> : <Circle size={22} strokeWidth={2.5} />}
@@ -385,7 +387,7 @@ export function ShoppingListPage() {
                           type="text"
                           value={editValues.nom || ''}
                           onChange={e => setEditValues({ ...editValues, nom: e.target.value })}
-                          className="w-full px-2 py-1 bg-white border border-blue-300 rounded text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                          className="w-full px-2 py-1 bg-white border border-emerald-300 rounded text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"
                           onKeyDown={e => e.key === 'Enter' && saveEdit(item.id)}
                           onBlur={() => saveEdit(item.id)}
                         />
@@ -406,13 +408,13 @@ export function ShoppingListPage() {
                             step="any"
                             value={editValues.quantite ?? 0}
                             onChange={e => setEditValues({ ...editValues, quantite: parseFloat(e.target.value) || 0 })}
-                            className="w-16 px-1 py-1 bg-white border border-blue-300 rounded text-xs text-right outline-none"
+                            className="w-16 px-1 py-1 bg-white border border-emerald-300 rounded text-xs text-right outline-none"
                           />
                           <input 
                             type="text"
                             value={editValues.unite || ''}
                             onChange={e => setEditValues({ ...editValues, unite: e.target.value })}
-                            className="w-12 px-1 py-1 bg-white border border-blue-300 rounded text-xs outline-none"
+                            className="w-12 px-1 py-1 bg-white border border-emerald-300 rounded text-xs outline-none"
                           />
                         </div>
                       ) : (
@@ -429,7 +431,7 @@ export function ShoppingListPage() {
                         {editingId === item.id ? (
                           <button 
                             onClick={(e) => { e.stopPropagation(); saveEdit(item.id); }} 
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg"
                           >
                             <CheckCircle2 size={16} />
                           </button>
@@ -437,7 +439,7 @@ export function ShoppingListPage() {
                           <>
                             <button 
                               onClick={(e) => { e.stopPropagation(); startEditing(item); }}
-                              className="p-1.5 text-slate-300 hover:text-blue-600 sm:opacity-0 group-hover:opacity-100 transition-all rounded-lg"
+                              className="p-1.5 text-slate-300 hover:text-emerald-600 sm:opacity-0 group-hover:opacity-100 transition-all rounded-lg"
                               title="Modifier"
                             >
                               <Plus size={16} className="rotate-45" />
@@ -481,7 +483,7 @@ export function ShoppingListPage() {
         <div className="card p-8 flex flex-col justify-center">
           <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Résumé des courses</h4>
           <div className="flex items-center gap-6">
-            <div className="text-5xl font-bold tracking-tighter text-blue-600">{courses.length}</div>
+            <div className="text-5xl font-bold tracking-tighter text-emerald-600">{courses.length}</div>
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider space-y-1">
               <p>Restant : <span className="text-slate-900 font-black">{courses.filter(c => !c.achete).length}</span></p>
               <p>Acheté : <span className="text-slate-900 font-black">{courses.filter(c => c.achete).length}</span></p>

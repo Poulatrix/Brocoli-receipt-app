@@ -14,25 +14,25 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'favicon.ico', 'apple-touch-icon.png'],
         manifest: {
-          name: 'Mes Recettes',
-          short_name: 'Recettes',
-          description: 'Hub complet de gestion de recettes et planning de repas',
-          theme_color: '#3b82f6',
+          name: 'BROCOLI - Receipt App',
+          short_name: 'BROCOLI',
+          description: 'Votre compagnon cuisine malin',
+          theme_color: '#22c55e',
           icons: [
             {
-              src: 'icon.svg',
+              src: 'logo_brocoli.png',
               sizes: '192x192',
-              type: 'image/svg+xml'
+              type: 'image/png'
             },
             {
-              src: 'icon.svg',
+              src: 'logo_brocoli.png',
               sizes: '512x512',
-              type: 'image/svg+xml'
+              type: 'image/png'
             },
             {
-              src: 'icon.svg',
+              src: 'logo_brocoli.png',
               sizes: '512x512',
-              type: 'image/svg+xml',
+              type: 'image/png',
               purpose: 'any maskable'
             }
           ]

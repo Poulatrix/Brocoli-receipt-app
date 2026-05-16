@@ -53,7 +53,7 @@ export default function App() {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FDFCFB]">
-        <ChefHat className="text-blue-600 animate-bounce" size={48} />
+        <ChefHat className="text-emerald-600 animate-bounce" size={48} />
       </div>
     );
   }
@@ -68,8 +68,8 @@ export default function App() {
       
       <main className="max-w-7xl mx-auto px-4 py-8">
         {storeLoading && (
-          <div className="fixed top-6 right-6 z-50 bg-white/90 backdrop-blur shadow-xl shadow-blue-500/5 border border-blue-100 px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-blue-600 flex items-center gap-3">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+          <div className="fixed top-6 right-6 z-50 bg-white/90 backdrop-blur shadow-xl shadow-emerald-500/5 border border-emerald-100 px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-emerald-600 flex items-center gap-3">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             Sync Cloud En cours
           </div>
         )}

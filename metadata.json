@@ -1,6 +1,6 @@
 {
-  "name": "Mes Recettes",
-  "description": "Hub complet de gestion de recettes, planning de repas et liste de courses avec assistance IA.",
+  "name": "BROCOLI - Receipt App",
+  "description": "L'app ultime pour gérer vos recettes et votre planning de repas avec style et simplicité.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

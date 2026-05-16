@@ -75,7 +75,7 @@ export function RecipesPage() {
     >
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Mes Recettes</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">BROCOLI</h2>
           <p className="text-sm text-slate-500">Gérez votre bibliothèque de saveurs</p>
         </div>
         <div className="flex items-center gap-3">
@@ -115,7 +115,7 @@ export function RecipesPage() {
                 onClick={() => toggleCategory(cat)}
                 className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
                   selectedCategories.includes(cat)
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
+                  ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' 
                   : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                 }`}
               >
@@ -127,7 +127,7 @@ export function RecipesPage() {
               className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border flex items-center gap-2 ${
                 showFilters || maxTime < 120
                 ? 'bg-slate-100 border-slate-300 text-slate-900' 
-                : 'bg-white border-slate-200 text-blue-600 hover:border-slate-300'
+                : 'bg-white border-slate-200 text-emerald-600 hover:border-slate-300'
               }`}
             >
               <Plus size={14} /> 
@@ -161,7 +161,7 @@ export function RecipesPage() {
               <div className="flex justify-between">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Temps total max ({maxTime} min)</label>
                 {maxTime < 120 && (
-                   <button onClick={() => setMaxTime(120)} className="text-[10px] font-bold text-blue-600 uppercase">Réinitialiser</button>
+                   <button onClick={() => setMaxTime(120)} className="text-[10px] font-bold text-emerald-600 uppercase">Réinitialiser</button>
                 )}
               </div>
               <input 
@@ -171,7 +171,7 @@ export function RecipesPage() {
                 step="5"
                 value={maxTime}
                 onChange={(e) => setMaxTime(parseInt(e.target.value))}
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
               />
               <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1">
                 <span>5min</span>
@@ -192,7 +192,7 @@ export function RecipesPage() {
           placeholder="Rechercher une recette..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 border-opacity-60 transition-all text-sm"
+          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 border-opacity-60 transition-all text-sm"
         />
       </div>
 
@@ -214,7 +214,7 @@ export function RecipesPage() {
           <p className="text-gray-500">Commencez par ajouter votre première recette !</p>
           <button 
             onClick={handleCreate}
-            className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-all shadow-lg shadow-blue-500/20"
+            className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-medium transition-all shadow-lg shadow-emerald-500/20"
           >
             <Plus size={20} />
             Créer ma première recette

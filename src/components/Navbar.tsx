@@ -26,7 +26,7 @@ export function Navbar({ tabs, activeTab, setActiveTab }: NavbarProps) {
               onClick={() => setActiveTab(tab.id)}
               className={`p-3 rounded-full transition-all duration-300 relative group flex items-center justify-center ${
                 isActive 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/50'
               }`}
             >

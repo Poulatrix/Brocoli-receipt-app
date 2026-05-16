@@ -50,7 +50,7 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
       `*Ingrédients :*\n${ingredients}\n\n` +
       `*Instructions :*\n${recette.instructions.map((s, i) => `${i+1}. ${s.titre}`).join('\n')}\n\n` +
       `Retrouvez la recette complète ici : ${window.location.origin}${window.location.pathname}?recipe=${recette.id}\n\n` +
-      `_Partagé via Mes Recettes Hub_`;
+      `_Partagé via BROCOLI_`;
   };
 
   const shareViaEmail = () => {
@@ -116,12 +116,12 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
     printWindow.document.write(`
       <html>
         <head>
-          <title>${recette.nom} - Mes Recettes Hub</title>
+          <title>${recette.nom} - BROCOLI</title>
           <style>
             body { font-family: 'Inter', sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; color: #1e293b; line-height: 1.6; }
             h1 { font-size: 32px; color: #0f172a; margin-bottom: 8px; }
             .meta { color: #64748b; font-size: 14px; margin-bottom: 30px; border-bottom: 1px solid #e2e8f0; padding-bottom: 20px; }
-            h2 { border-bottom: 2px solid #3b82f6; display: inline-block; padding-bottom: 4px; margin-top: 30px; }
+            h2 { border-bottom: 2px solid #10b981; display: inline-block; padding-bottom: 4px; margin-top: 30px; }
             ul { list-style: none; padding: 0; }
             li { padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
             .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px dashed #e2e8f0; padding-top: 20px; }
@@ -136,7 +136,7 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
           <ul>${ingredientsHtml}</ul>
           <h2>Instructions</h2>
           <div>${instructionsHtml}</div>
-          <div class="footer">Mes Recettes Hub - Votre compagnon cuisine</div>
+          <div class="footer">BROCOLI - Receipt App</div>
         </body>
       </html>
     `);
@@ -309,7 +309,7 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
                 <button 
                   onClick={handleAddShopping}
                   disabled={excludedIngredients.length === adjustedIngredients.length}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-sm"
                 >
                   <ShoppingCart size={16} />
                   Ajouter ma sélection
@@ -323,14 +323,14 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
                     className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
                       excludedIngredients.includes(ing.id) 
                       ? 'bg-slate-50 border-slate-100 opacity-60' 
-                      : 'bg-white border-slate-100 hover:border-blue-200'
+                      : 'bg-white border-slate-100 hover:border-emerald-200'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
                         excludedIngredients.includes(ing.id) 
                         ? 'bg-white border-slate-200 text-slate-200' 
-                        : 'bg-blue-600 border-blue-600 text-white'
+                        : 'bg-emerald-600 border-emerald-600 text-white'
                       }`}>
                         {!excludedIngredients.includes(ing.id) && <Plus size={14} strokeWidth={3} />}
                       </div>
@@ -353,7 +353,7 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
               <div className="space-y-6">
                 {recette.instructions.map((step, idx) => (
                   <div key={idx} className="flex gap-4 group">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0 border border-blue-100">
+                    <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0 border border-emerald-100">
                       {idx + 1}
                     </div>
                     <div>
@@ -372,7 +372,7 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
           <div className="w-1/3 bg-slate-50/50 p-8 flex flex-col pt-6">
             <button 
               onClick={() => setModeCuisine(true)}
-              className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 mb-10"
+              className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 mb-10"
             >
               <ChefHat size={20} />
               Cuisiner maintenant
@@ -381,21 +381,21 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
             <div className="flex justify-end gap-3 mb-10">
               <button 
                 onClick={handlePrint}
-                className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-blue-600 transition-colors shadow-sm"
+                className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-emerald-600 transition-colors shadow-sm"
                 title="Imprimer"
               >
                 <Printer size={20} />
               </button>
               <button 
                 onClick={handleShare}
-                className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-blue-600 transition-colors shadow-sm"
+                className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-emerald-600 transition-colors shadow-sm"
                 title="Partager"
               >
                 <Share2 size={20} />
               </button>
               <button 
                 onClick={onEdit}
-                className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-blue-600 transition-colors shadow-sm"
+                className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-emerald-600 transition-colors shadow-sm"
                 title="Modifier"
               >
                 <Pencil size={20} />
@@ -425,7 +425,7 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
                   <span className="text-2xl font-bold text-slate-900">{portions}</span>
                   <button 
                     onClick={() => setPortions(portions + 1)}
-                    className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center font-bold text-lg text-blue-600 hover:bg-slate-200"
+                    className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center font-bold text-lg text-emerald-600 hover:bg-slate-200"
                   >
                     +
                   </button>
@@ -473,7 +473,7 @@ function CookingMode({
     >
       <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
+          <div className="w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold">
             {currentStep + 1}
           </div>
           <div>
@@ -525,7 +525,7 @@ function CookingMode({
               onClose();
             }
           }}
-          className="flex-[2] btn-primary justify-center shadow-lg shadow-blue-500/20"
+          className="flex-[2] btn-primary justify-center shadow-lg shadow-emerald-500/20"
         >
           {currentStep === instructions.length - 1 ? 'Terminer' : 'Étape suivante'}
           <ChevronRight size={20} />

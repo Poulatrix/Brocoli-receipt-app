@@ -151,14 +151,14 @@ export function PlanningPage() {
                 }
               }}
               className={`relative group bg-white border rounded-xl p-4 min-h-[130px] shadow-sm hover:shadow-md transition-all cursor-pointer ${
-                isToday ? 'border-blue-600 ring-1 ring-blue-600/10' : 'border-slate-200 hover:border-blue-300'
-              } ${selectedSuggest ? 'ring-2 ring-blue-500 ring-offset-2 animate-pulse' : ''}`}
+                isToday ? 'border-emerald-600 ring-1 ring-emerald-600/10' : 'border-slate-200 hover:border-emerald-300'
+              } ${selectedSuggest ? 'ring-2 ring-emerald-500 ring-offset-2 animate-pulse' : ''}`}
             >
               <div className="flex justify-between items-center mb-3">
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? 'text-blue-600' : 'text-slate-400'}`}>
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? 'text-emerald-600' : 'text-slate-400'}`}>
                   {format(day, 'EEE', { locale: fr }).replace('.', '')}
                 </span>
-                <span className={`text-xs font-bold ${isToday ? 'bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center' : 'text-slate-900'}`}>
+                <span className={`text-xs font-bold ${isToday ? 'bg-emerald-600 text-white w-5 h-5 rounded-full flex items-center justify-center' : 'text-slate-900'}`}>
                   {format(day, 'd')}
                 </span>
               </div>
@@ -205,7 +205,7 @@ export function PlanningPage() {
         <motion.div 
           initial={{ y: 20, opacity: 0 }} 
           animate={{ y: 0, opacity: 1 }} 
-          className="bg-blue-600 p-4 rounded-xl flex items-center justify-between text-white shadow-lg sticky bottom-4 z-50 mx-auto max-w-lg"
+          className="bg-emerald-600 p-4 rounded-xl flex items-center justify-between text-white shadow-lg sticky bottom-4 z-50 mx-auto max-w-lg"
         >
           <div className="flex items-center gap-3">
              <Plus size={20} />
@@ -257,7 +257,7 @@ export function PlanningPage() {
                   </div>
                 </div>
                 <button 
-                  className="w-full py-2 bg-slate-50 border border-slate-100 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-1"
+                  className="w-full py-2 bg-slate-50 border border-slate-100 text-emerald-600 text-xs font-bold rounded-lg hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1"
                   onClick={() => setSelectedSuggest(suggest)}
                 >
                   <Plus size={14} />
@@ -271,7 +271,7 @@ export function PlanningPage() {
           {autoSuggestions.map((r, idx) => (
             <div 
               key={`auto-${r.id}`} 
-              className="card p-5 space-y-4 relative group opacity-60 hover:opacity-100 transition-all border-dashed border-slate-200 cursor-pointer hover:border-blue-200"
+              className="card p-5 space-y-4 relative group opacity-60 hover:opacity-100 transition-all border-dashed border-slate-200 cursor-pointer hover:border-emerald-200"
               onClick={() => {
                 const now = new Date();
                 const timestampDate = `1900-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}.${now.getMilliseconds()}`;
@@ -285,7 +285,7 @@ export function PlanningPage() {
                 setPlanningEntry(dateString, r.id, null);
               }}
             >
-              <div className="absolute -top-2 -right-2 bg-blue-100 text-blue-600 text-[8px] font-black uppercase tracking-tighter px-2 py-1 rounded-full shadow-sm">
+              <div className="absolute -top-2 -right-2 bg-emerald-100 text-emerald-600 text-[8px] font-black uppercase tracking-tighter px-2 py-1 rounded-full shadow-sm">
                 Suggestion
               </div>
               <div className="flex items-center gap-4 grayscale group-hover:grayscale-0 transition-all">
@@ -339,7 +339,7 @@ export function PlanningPage() {
                     }}
                     className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
                       selectedForShopping.includes(p.dateStr) 
-                      ? 'border-blue-200 bg-blue-50/50' 
+                      ? 'border-emerald-200 bg-emerald-50/50' 
                       : 'border-slate-100 hover:bg-slate-50'
                     }`}
                   >
@@ -354,7 +354,7 @@ export function PlanningPage() {
                          </p>
                        </div>
                     </div>
-                    <div className={selectedForShopping.includes(p.dateStr) ? 'text-blue-600' : 'text-slate-200'}>
+                    <div className={selectedForShopping.includes(p.dateStr) ? 'text-emerald-600' : 'text-slate-200'}>
                       <CheckCircle2 size={24} strokeWidth={2.5} />
                     </div>
                   </button>
@@ -366,7 +366,7 @@ export function PlanningPage() {
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedForShopping.length} repas sélectionnés</span>
                     <button 
                       onClick={() => setSelectedForShopping(selectedForShopping.length === planningDays.length ? [] : planningDays.map(p => p.dateStr))}
-                      className="text-[10px] font-black text-blue-600 uppercase tracking-tighter"
+                      className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter"
                     >
                       {selectedForShopping.length === planningDays.length ? 'Tout décocher' : 'Tout cocher'}
                     </button>
@@ -374,7 +374,7 @@ export function PlanningPage() {
                  <button 
                   disabled={selectedForShopping.length === 0}
                   onClick={handleAddAllToShopping}
-                  className="w-full btn-primary justify-center shadow-lg shadow-blue-500/20 py-4"
+                  className="w-full btn-primary justify-center shadow-lg shadow-emerald-500/20 py-4"
                  >
                    Envoyer à la liste de courses
                  </button>
@@ -394,7 +394,7 @@ export function PlanningPage() {
             >
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-bold text-gray-900">Programmer un repas</h3>
-                <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
                    {format(parseISO(isAssigning.date), 'EEEE d MMMM', { locale: fr })}
                 </span>
               </div>
@@ -410,7 +410,7 @@ export function PlanningPage() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && searchTerm) handleAssign(null, searchTerm);
                   }}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
                 />
               </div>
 
@@ -420,22 +420,22 @@ export function PlanningPage() {
                     <button
                       key={r.id}
                       onClick={() => handleAssign(r.id, null)}
-                      className="w-full flex items-center gap-3 p-3 rounded-2xl border border-gray-50 hover:border-blue-200 hover:bg-blue-50 transition-all text-left group"
+                      className="w-full flex items-center gap-3 p-3 rounded-2xl border border-gray-50 hover:border-emerald-200 hover:bg-emerald-50 transition-all text-left group"
                     >
                       <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
                         <img src={r.image || `https://picsum.photos/seed/${r.id}/40/40`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                       </div>
                       <div className="flex-1">
-                        <p className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors">{r.nom}</p>
+                        <p className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">{r.nom}</p>
                         <p className="text-[10px] text-gray-400 uppercase font-bold">{r.categorie}</p>
                       </div>
-                      <ChevronRight className="text-gray-300 group-hover:text-blue-400" size={18} />
+                      <ChevronRight className="text-gray-300 group-hover:text-emerald-400" size={18} />
                     </button>
                   ))
                 ) : searchTerm.length > 0 ? (
                   <button 
                     onClick={() => handleAssign(null, searchTerm)}
-                    className="w-full p-4 border border-dashed border-blue-200 rounded-2xl text-blue-600 font-bold hover:bg-blue-50 transition-all text-center"
+                    className="w-full p-4 border border-dashed border-emerald-200 rounded-2xl text-emerald-600 font-bold hover:bg-emerald-50 transition-all text-center"
                   >
                     Ajouter "{searchTerm}" comme idée libre
                   </button>
@@ -510,7 +510,7 @@ export function PlanningPage() {
                         value={newSuggestion || ''}
                         onChange={(e) => setNewSuggestion(e.target.value)}
                         placeholder="ex: Commande de sushis"
-                        className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none text-sm"
+                        className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none text-sm"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && newSuggestion) {
                             const randomDay = Math.floor(Math.random() * 28) + 1;
@@ -534,7 +534,7 @@ export function PlanningPage() {
                           }
                         }}
                         disabled={!newSuggestion}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors disabled:opacity-50"
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50"
                       >
                         <Plus size={18} />
                       </button>

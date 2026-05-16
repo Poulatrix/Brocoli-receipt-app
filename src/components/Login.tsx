@@ -36,18 +36,16 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-[#FDFCFB] p-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-8 space-y-8">
         <div className="text-center space-y-6">
-          <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
-            <ChefHat size={40} />
+          <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm overflow-hidden p-3">
+             <img src="/logo_brocoli.svg" alt="BROCOLI" className="w-full h-full object-contain" />
           </div>
           
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-slate-900">
-              {isSignUp ? 'Créer un compte' : 'Bon retour !'}
+              BROCOLI
             </h1>
             <p className="text-slate-500">
-              {isSignUp 
-                ? 'Rejoignez-nous pour gérer vos recettes.' 
-                : 'Connectez-vous pour accéder à votre cuisine.'}
+              {isSignUp ? 'Créer un compte' : 'Bon retour !'}
             </p>
           </div>
         </div>
@@ -76,7 +74,7 @@ export function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="votre@email.com"
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-900"
+                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-slate-900"
               />
             </div>
           </div>
@@ -92,7 +90,7 @@ export function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-slate-900"
+                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all text-slate-900"
               />
             </div>
           </div>
@@ -100,7 +98,7 @@ export function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all font-bold shadow-lg shadow-slate-900/10 disabled:opacity-50"
+            className="w-full py-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all font-bold shadow-lg shadow-emerald-900/10 disabled:opacity-50"
           >
             {loading ? 'Traitement...' : (isSignUp ? 'Créer mon compte' : 'Se connecter')}
           </button>
@@ -113,7 +111,7 @@ export function Login() {
               setError(null);
               setSuccess(false);
             }}
-            className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+            className="text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
           >
             {isSignUp 
               ? 'Déjà un compte ? Connectez-vous' 
