@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus, Minus, ShoppingCart, Pencil, Trash2, ChevronRight, Clock, Users, Flame, ChefHat, Share2, ChevronLeft, Printer, Mail, MessageCircle, Copy } from 'lucide-react';
 import { Recette, Ingredient } from '../types';
@@ -17,6 +17,15 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
   const [modeCuisine, setModeCuisine] = useState(false);
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
   const [showShareMenu, setShowShareMenu] = useState(false);
+
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const ratio = portions / recette.portions;
 
@@ -150,7 +159,7 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-8">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center md:p-8 p-0">
       <AnimatePresence>
         {showShareMenu && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -272,26 +281,26 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="relative bg-white w-full max-w-[860px] h-[640px] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-fade-in"
+        className="relative bg-white w-full max-w-[860px] md:h-[640px] h-full rounded-3xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col mb-0"
       >
         {/* Modal Header Image */}
         <div 
-          className="h-52 bg-cover bg-center shrink-0 relative" 
+          className="md:h-52 h-40 bg-cover bg-center shrink-0 relative" 
           style={{ backgroundImage: `url(${recette.image || `https://picsum.photos/seed/${recette.id}/1000/400`})` }}
         >
-          <div className="w-full h-full bg-gradient-to-t from-black/60 to-transparent flex items-end p-8">
-            <h2 className="text-3xl font-bold text-white tracking-tight">{recette.nom}</h2>
+          <div className="w-full h-full bg-gradient-to-t from-black/60 to-transparent flex items-end p-6 md:p-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">{recette.nom}</h2>
           </div>
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 bg-white/20 backdrop-blur-md hover:bg-white/40 text-white rounded-full p-2 transition-all"
+            className="absolute top-4 right-4 bg-white/20 backdrop-blur-md hover:bg-white/40 text-white rounded-full p-2 transition-all z-20"
           >
             <X size={24} />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="flex flex-grow overflow-hidden text-sm relative">
+        <div className="flex flex-col md:flex-row flex-grow overflow-hidden text-sm relative">
           <AnimatePresence>
             {modeCuisine && (
               <CookingMode 
@@ -301,8 +310,9 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
             )}
           </AnimatePresence>
 
-          {/* Left: Ingredients & Instructions */}
-          <div className="w-2/3 p-8 overflow-y-auto border-r border-slate-100 space-y-10 scrollbar-hide">
+          {/* Desktop Left: Ingredients & Instructions */}
+          <div className="hidden md:block md:w-2/3 p-8 overflow-y-auto border-r border-slate-100 space-y-10 scrollbar-hide">
+            {/* Ingredients Section */}
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-slate-900">Ingrédients</h3>
@@ -346,6 +356,7 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
               </ul>
             </div>
 
+            {/* Instructions Section */}
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-slate-900">Instructions</h3>
@@ -368,8 +379,8 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
             </div>
           </div>
 
-          {/* Right: Meta Information */}
-          <div className="w-1/3 bg-slate-50/50 p-8 flex flex-col pt-6">
+          {/* Desktop Right: Meta Info */}
+          <div className="hidden md:flex md:w-1/3 bg-slate-50/50 p-8 flex-col pt-6 overflow-y-auto">
             <button 
               onClick={() => setModeCuisine(true)}
               className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 mb-10"
@@ -441,11 +452,116 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
                   <span className="text-slate-500 font-medium">Cuisson</span>
                   <span className="font-bold text-slate-900">{recette.cuissonMin} min</span>
                 </div>
-                <div className="flex justify-between items-center border-t border-slate-200 pt-4 px-1">
-                  <span className="text-slate-500 font-medium">Calories</span>
-                  <span className="font-bold text-slate-900">{Math.round((recette.calories * ratio) / portions)} kcal</span>
-                </div>
               </div>
+            </div>
+          </div>
+
+          {/* Mobile Optimized View */}
+          <div className="md:hidden flex-1 overflow-y-auto p-6 space-y-8 pb-32">
+            {/* 1. Meta Info (Portions, Prep, Cook) */}
+            <div className="space-y-4">
+               <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Users size={20} /></div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Portions</p>
+                      <div className="flex items-center gap-4">
+                        <button onClick={() => setPortions(Math.max(1, portions - 1))} className="text-lg font-bold text-slate-400">-</button>
+                        <span className="text-lg font-bold text-slate-900">{portions}</span>
+                        <button onClick={() => setPortions(portions + 1)} className="text-lg font-bold text-emerald-600">+</button>
+                      </div>
+                    </div>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
+                    <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><Clock size={18} /></div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Prép</p>
+                      <p className="font-bold text-slate-900">{recette.prepMin}m</p>
+                    </div>
+                 </div>
+                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center gap-3">
+                    <div className="p-2 bg-red-50 text-red-600 rounded-lg"><Flame size={18} /></div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Cuisson</p>
+                      <p className="font-bold text-slate-900">{recette.cuissonMin}m</p>
+                    </div>
+                 </div>
+               </div>
+            </div>
+
+            {/* 2. Ingredients */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900">Ingrédients</h3>
+                <button 
+                  onClick={handleAddShopping}
+                  className="text-emerald-600 font-bold text-xs underline"
+                >
+                  Tout ajouter
+                </button>
+              </div>
+              <ul className="space-y-2">
+                {adjustedIngredients.map((ing) => (
+                  <li 
+                    key={ing.id} 
+                    onClick={() => toggleIngredient(ing.id)}
+                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                      excludedIngredients.includes(ing.id) ? 'bg-slate-50 opacity-60' : 'bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${excludedIngredients.includes(ing.id) ? 'bg-white border-slate-200' : 'bg-emerald-600 border-emerald-600 text-white'}`}>
+                        {!excludedIngredients.includes(ing.id) && <Plus size={10} strokeWidth={4} />}
+                      </div>
+                      <span className="text-sm font-medium text-slate-700">{ing.nom}</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-400">{ing.quantite > 0 && ing.quantite} {ing.unite}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 3. Cook Now Button */}
+            <button 
+              onClick={() => setModeCuisine(true)}
+              className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-emerald-500/20 active:scale-95 transition-all"
+            >
+              <ChefHat size={20} />
+              Cuisiner maintenant
+            </button>
+
+            {/* 4. Instructions */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-900">Instructions</h3>
+              <div className="space-y-6">
+                {recette.instructions.map((step, idx) => (
+                  <div key={idx} className="flex gap-4">
+                    <div className="w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0 text-xs border border-emerald-100">
+                      {idx + 1}
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed pt-0.5">{step.texte}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions Bar (Footer for Mobile) */}
+            <div className="flex justify-between items-center pt-8 border-t border-slate-100 pb-10">
+               <button onClick={handleShare} className="flex flex-col items-center gap-2 text-slate-400">
+                  <div className="p-3 bg-slate-50 rounded-xl"><Share2 size={20} /></div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Partager</span>
+               </button>
+               <button onClick={onEdit} className="flex flex-col items-center gap-2 text-slate-400">
+                  <div className="p-3 bg-slate-50 rounded-xl"><Pencil size={20} /></div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Modifier</span>
+               </button>
+               <button onClick={() => setShowConfirmDelete(true)} className="flex flex-col items-center gap-2 text-red-400">
+                  <div className="p-3 bg-red-50 rounded-xl"><Trash2 size={20} /></div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-red-300">Effacer</span>
+               </button>
             </div>
           </div>
         </div>

@@ -36,8 +36,8 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-[#FDFCFB] p-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-8 space-y-8">
         <div className="text-center space-y-6">
-          <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm overflow-hidden p-3">
-             <img src="/logo_brocoli.svg" alt="BROCOLI" className="w-full h-full object-contain" />
+          <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm overflow-hidden">
+             <img src="/logo_brocoli.png" alt="BROCOLI" className="w-full h-full object-cover" />
           </div>
           
           <div className="space-y-2">

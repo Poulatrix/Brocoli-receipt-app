@@ -359,10 +359,10 @@ export function ShoppingListPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-12 text-center">État</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Article</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Quantité</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-24"></th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-12 text-center">État</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Article</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Quantité</th>
+                  <th className="px-3 md:px-6 py-3 md:py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-24"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -371,16 +371,16 @@ export function ShoppingListPage() {
                     key={item.id} 
                     className={`group transition-colors ${item.achete ? 'bg-slate-50/40' : 'hover:bg-slate-50/60'}`}
                   >
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 md:px-6 py-2 md:py-4 text-center">
                       <button 
                         onClick={() => toggleShoppingItem(item.id)}
                         className={`transition-colors flex justify-center w-full ${item.achete ? 'text-emerald-500' : 'text-slate-200 hover:text-slate-400'}`}
                         title={item.achete ? 'Marquer comme non acheté' : 'Marquer comme acheté'}
                       >
-                        {item.achete ? <CheckCircle2 size={22} strokeWidth={2.5} /> : <Circle size={22} strokeWidth={2.5} />}
+                        {item.achete ? <CheckCircle2 size={20} strokeWidth={2.5} /> : <Circle size={20} strokeWidth={2.5} />}
                       </button>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
                       {editingId === item.id ? (
                         <input 
                           autoFocus
@@ -400,7 +400,7 @@ export function ShoppingListPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-3 md:px-6 py-2 md:py-4 text-right whitespace-nowrap">
                       {editingId === item.id ? (
                         <div className="flex justify-end gap-1">
                           <input 
@@ -426,7 +426,7 @@ export function ShoppingListPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-3 md:px-6 py-2 md:py-4 text-right">
                       <div className="flex justify-end gap-1">
                         {editingId === item.id ? (
                           <button 

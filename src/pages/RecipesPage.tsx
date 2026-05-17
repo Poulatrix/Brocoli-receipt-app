@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { motion } from 'motion/react';
-import { Search, Plus, LayoutGrid, List, Save, ChefHat } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Search, Plus, LayoutGrid, List, Save, ChefHat, Filter, X } from 'lucide-react';
 import { useStore } from '../store';
 import { Recette, CategorieRecette } from '../types';
 import { RecipeCard } from '../components/RecipeCard';
@@ -23,6 +23,19 @@ export function RecipesPage() {
   }, [recettes]);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setViewMode('list');
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const [selectedRecipe, setSelectedRecipe] = useState<Recette | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recette | null>(null);
@@ -97,103 +110,175 @@ export function RecipesPage() {
       </div>
 
       <div className="flex flex-col gap-6 mb-8">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-          <div className="flex flex-wrap gap-2 flex-grow">
-            <button
-              onClick={() => setSelectedCategories([])}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
-                selectedCategories.length === 0 
-                ? 'bg-slate-900 border-slate-900 text-white' 
-                : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-              }`}
-            >
-              Tout
-            </button>
-            {allCategories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => toggleCategory(cat)}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
-                  selectedCategories.includes(cat)
-                  ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' 
-                  : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border flex items-center gap-2 ${
-                showFilters || maxTime < 120
-                ? 'bg-slate-100 border-slate-300 text-slate-900' 
-                : 'bg-white border-slate-200 text-emerald-600 hover:border-slate-300'
-              }`}
-            >
-              <Plus size={14} /> 
-              {showFilters ? 'Moins de filtres' : 'Plus de filtres'}
-            </button>
+        <div className="flex gap-4 items-center justify-between">
+          <div className="flex-1 relative max-w-2xl">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              type="text"
+              placeholder="Rechercher..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 border-opacity-60 transition-all text-sm"
+            />
           </div>
-          
-          <div className="bg-slate-200/50 p-1 rounded-lg flex shrink-0 self-end sm:self-auto">
+
+          <div className="flex items-center gap-2">
             <button 
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}
+              onClick={() => setShowFilters(true)}
+              className="md:hidden p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all"
+              title="Filtres"
             >
-              <LayoutGrid size={16} />
+              <Filter size={18} />
             </button>
-            <button 
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}
-            >
-              <List size={16} />
-            </button>
+
+            <div className="hidden md:flex bg-slate-200/50 p-1 rounded-lg">
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-50'}`}
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-50'}`}
+              >
+                <List size={16} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {showFilters && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 overflow-hidden"
+        {/* Desktop Filters */}
+        <div className="hidden md:flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedCategories([])}
+            className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
+              selectedCategories.length === 0 
+              ? 'bg-slate-900 border-slate-900 text-white' 
+              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+            }`}
           >
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Temps total max ({maxTime} min)</label>
-                {maxTime < 120 && (
-                   <button onClick={() => setMaxTime(120)} className="text-[10px] font-bold text-emerald-600 uppercase">Réinitialiser</button>
-                )}
-              </div>
-              <input 
-                type="range" 
-                min="5" 
-                max="120" 
-                step="5"
-                value={maxTime}
-                onChange={(e) => setMaxTime(parseInt(e.target.value))}
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+            Tout
+          </button>
+          {allCategories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => toggleCategory(cat)}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
+                selectedCategories.includes(cat)
+                ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' 
+                : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+          <div className="flex items-center gap-3 ml-4 border-l pl-4 border-slate-200">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Max {maxTime} min</label>
+            <input 
+              type="range" 
+              min="5" 
+              max="120" 
+              step="5"
+              value={maxTime}
+              onChange={(e) => setMaxTime(parseInt(e.target.value))}
+              className="w-32 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+            />
+          </div>
+        </div>
+
+        {/* Mobile Filters Popup */}
+        <AnimatePresence>
+          {showFilters && isMobile && (
+            <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowFilters(false)}
+                className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
               />
-              <div className="flex justify-between text-[10px] text-slate-400 font-bold px-1">
-                <span>5min</span>
-                <span>30min</span>
-                <span>60min</span>
-                <span>90min</span>
-                <span>120min+</span>
-              </div>
+              <motion.div 
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                className="relative w-full max-w-lg bg-white rounded-t-[2rem] sm:rounded-3xl p-8 shadow-2xl overflow-hidden max-h-[80vh] flex flex-col"
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold text-slate-900">Filtres</h3>
+                  <button onClick={() => setShowFilters(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-8 pr-2">
+                  <div className="space-y-4">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Catégories</label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setSelectedCategories([])}
+                        className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all border ${
+                          selectedCategories.length === 0 
+                          ? 'bg-slate-900 border-slate-900 text-white' 
+                          : 'bg-white border-slate-200 text-slate-600'
+                        }`}
+                      >
+                        Tout
+                      </button>
+                      {allCategories.map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => toggleCategory(cat)}
+                          className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all border ${
+                            selectedCategories.includes(cat)
+                            ? 'bg-emerald-600 border-emerald-600 text-white' 
+                            : 'bg-white border-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Temps max : {maxTime} min</label>
+                      {maxTime < 120 && (
+                        <button onClick={() => setMaxTime(120)} className="text-xs font-bold text-emerald-600">Réinitialiser</button>
+                      )}
+                    </div>
+                    <input 
+                      type="range" 
+                      min="5" 
+                      max="120" 
+                      step="5"
+                      value={maxTime}
+                      onChange={(e) => setMaxTime(parseInt(e.target.value))}
+                      className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-400 font-bold">
+                      <span>5m</span>
+                      <span>1h</span>
+                      <span>2h+</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setShowFilters(false)}
+                  className="w-full mt-8 py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg shadow-slate-900/10"
+                >
+                  Voir {filteredRecettes.length} recettes
+                </button>
+              </motion.div>
             </div>
-          </motion.div>
-        )}
+          )}
+        </AnimatePresence>
       </div>
 
-      <div className="relative mb-8">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-        <input 
-          type="text"
-          placeholder="Rechercher une recette..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 border-opacity-60 transition-all text-sm"
-        />
+      <div className="hidden">
+        {/* Removed redundant search input */}
       </div>
 
       {filteredRecettes.length > 0 ? (
