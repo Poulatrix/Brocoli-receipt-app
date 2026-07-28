@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Minus, ShoppingCart, Pencil, Trash2, ChevronRight, Clock, Users, Flame, ChefHat, Share2, ChevronLeft, Printer, Mail, MessageCircle, Copy } from 'lucide-react';
+import { X, Plus, Minus, ShoppingCart, Pencil, Trash2, ChevronRight, Clock, Users, Flame, ChefHat, Share2, ChevronLeft, Printer, Mail, MessageCircle, Copy, Heart } from 'lucide-react';
 import { Recette, Ingredient } from '../types';
+import { useStore } from '../store';
 
 interface RecipeDetailModalProps {
   recette: Recette;
@@ -12,6 +13,7 @@ interface RecipeDetailModalProps {
 }
 
 export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddShopping }: RecipeDetailModalProps) {
+  const updateRecette = useStore(state => state.updateRecette);
   const [portions, setPortions] = useState(recette.portions);
   const [currentStep, setCurrentStep] = useState(0);
   const [modeCuisine, setModeCuisine] = useState(false);
@@ -289,7 +291,22 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
           style={{ backgroundImage: `url(${recette.image || `https://picsum.photos/seed/${recette.id}/1000/400`})` }}
         >
           <div className="w-full h-full bg-gradient-to-t from-black/60 to-transparent flex items-end p-6 md:p-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">{recette.nom}</h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">{recette.nom}</h2>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  updateRecette({ ...recette, favori: !recette.favori });
+                }}
+                className={`p-2 rounded-full backdrop-blur-md transition-all ${
+                  recette.favori 
+                  ? 'bg-rose-500 text-white' 
+                  : 'bg-white/20 text-white hover:bg-white/40'
+                }`}
+              >
+                <Heart size={20} fill={recette.favori ? "currentColor" : "none"} strokeWidth={2.5} />
+              </button>
+            </div>
           </div>
           <button 
             onClick={onClose}

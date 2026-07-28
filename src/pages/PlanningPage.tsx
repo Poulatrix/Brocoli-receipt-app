@@ -14,6 +14,7 @@ export function PlanningPage() {
   const [newSuggestion, setNewSuggestion] = useState('');
   const [showShoppingTools, setShowShoppingTools] = useState(false);
   const [selectedForShopping, setSelectedForShopping] = useState<string[]>([]);
+  const [draggedDate, setDraggedDate] = useState<string | null>(null);
 
   const today = startOfToday();
   const days = Array.from({ length: 14 }).map((_, i) => addDays(today, i));
@@ -105,6 +106,52 @@ export function PlanningPage() {
     alert(`${selectedEntries.length} repas ajoutés à votre liste de courses !`);
   };
 
+  const handleDragStart = (e: React.DragEvent, date: string) => {
+    setDraggedDate(date);
+    e.dataTransfer.setData('text/plain', date);
+    e.dataTransfer.effectAllowed = 'move';
+    
+    // Add a small delay to allow the drag image to be created before we change the opacity
+    setTimeout(() => {
+      if (e.target instanceof HTMLElement) {
+        e.target.classList.add('opacity-40');
+      }
+    }, 0);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setDraggedDate(null);
+    if (e.target instanceof HTMLElement) {
+      e.target.classList.remove('opacity-40');
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetDate: string) => {
+    e.preventDefault();
+    const sourceDate = e.dataTransfer.getData('text/plain');
+    if (!sourceDate || sourceDate === targetDate) return;
+
+    const sourceEntry = planning.find(p => p.date === sourceDate);
+    const targetEntry = planning.find(p => p.date === targetDate);
+
+    // Swap logic
+    const sourceRecetteId = sourceEntry?.recetteId || null;
+    const sourceSuggest = sourceEntry?.suggestionLibre || null;
+    const targetRecetteId = targetEntry?.recetteId || null;
+    const targetSuggest = targetEntry?.suggestionLibre || null;
+
+    // Use a single sequence of updates or handle them safely
+    await setPlanningEntry(targetDate, sourceRecetteId, sourceSuggest);
+    await setPlanningEntry(sourceDate, targetRecetteId, targetSuggest);
+    
+    setDraggedDate(null);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -133,7 +180,7 @@ export function PlanningPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-6">
         {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const entry = planning.find(p => p.date === dateStr);
@@ -143,6 +190,11 @@ export function PlanningPage() {
           return (
             <div 
               key={dateStr}
+              draggable={!!(recette || entry?.suggestionLibre)}
+              onDragStart={(e) => handleDragStart(e, dateStr)}
+              onDragEnd={handleDragEnd}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, dateStr)}
               onClick={() => {
                 if (selectedSuggest) {
                   handleAssignSuggestToDate(dateStr);
@@ -150,50 +202,52 @@ export function PlanningPage() {
                   setIsAssigning({ date: dateStr });
                 }
               }}
-              className={`relative group bg-white border rounded-xl p-4 min-h-[130px] shadow-sm hover:shadow-md transition-all cursor-pointer ${
+              className={`relative group bg-white border rounded-2xl p-6 min-h-[160px] md:min-h-[180px] shadow-sm hover:shadow-md transition-all cursor-pointer ${
                 isToday ? 'border-emerald-600 ring-1 ring-emerald-600/10' : 'border-slate-200 hover:border-emerald-300'
-              } ${selectedSuggest ? 'ring-2 ring-emerald-500 ring-offset-2 animate-pulse' : ''}`}
+              } ${selectedSuggest ? 'ring-2 ring-emerald-500 ring-offset-2 animate-pulse' : ''} ${draggedDate === dateStr ? 'bg-slate-50/50 border-dashed border-emerald-400' : ''}`}
             >
-              <div className="flex justify-between items-center mb-3">
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${isToday ? 'text-emerald-600' : 'text-slate-400'}`}>
-                  {format(day, 'EEE', { locale: fr }).replace('.', '')}
+              <div className="flex justify-between items-center mb-4">
+                <span className={`text-[11px] md:text-xs font-bold uppercase tracking-widest ${isToday ? 'text-emerald-600' : 'text-slate-400'}`}>
+                  {format(day, 'EEEE', { locale: fr }).replace('.', '')}
                 </span>
-                <span className={`text-xs font-bold ${isToday ? 'bg-emerald-600 text-white w-5 h-5 rounded-full flex items-center justify-center' : 'text-slate-900'}`}>
+                <span className={`text-sm font-bold ${isToday ? 'bg-emerald-600 text-white w-6 h-6 rounded-full flex items-center justify-center' : 'text-slate-900'}`}>
                   {format(day, 'd')}
                 </span>
               </div>
 
               {recette ? (
-                <div className="space-y-2">
-                  <div className="relative w-full h-14 rounded-lg overflow-hidden border border-slate-100 shadow-sm">
+                <div className="space-y-3">
+                  <div className="relative w-full h-16 md:h-20 rounded-xl overflow-hidden border border-slate-100 shadow-sm transition-transform group-hover:scale-[1.02]">
                     <img 
-                      src={recette.image || `https://picsum.photos/seed/${recette.id}/100/100`} 
+                      src={recette.image || `https://picsum.photos/seed/${recette.id}/200/200`} 
                       className="w-full h-full object-cover" 
                       alt=""
                       referrerPolicy="no-referrer"
                     />
                   </div>
-                  <p className="text-[10px] font-bold text-slate-800 leading-tight line-clamp-2 uppercase">
+                  <p className="text-[11px] md:text-xs font-bold text-slate-800 leading-tight line-clamp-2 uppercase tracking-tight">
                     {recette.nom}
                   </p>
                 </div>
               ) : entry?.suggestionLibre ? (
-                <div className="space-y-2">
-                   <div className="relative w-full h-14 rounded-lg overflow-hidden border border-slate-100 shadow-sm bg-slate-50">
+                <div className="space-y-3">
+                   <div className="relative w-full h-16 md:h-20 rounded-xl overflow-hidden border border-slate-100 shadow-sm bg-slate-50 transition-transform group-hover:scale-[1.02]">
                     <img 
-                      src={`https://loremflickr.com/100/100/food,${encodeURIComponent(entry.suggestionLibre.split(' ')[0])}?lock=${entry.date.length}`} 
+                      src={`https://loremflickr.com/200/200/food,${encodeURIComponent(entry.suggestionLibre.split(' ')[0])}?lock=${entry.date.length}`} 
                       className="w-full h-full object-cover opacity-80" 
                       alt=""
                       referrerPolicy="no-referrer"
                     />
                   </div>
-                  <div className="text-[9px] font-bold text-slate-600 leading-tight uppercase line-clamp-2">
+                  <div className="text-[10px] md:text-[11px] font-bold text-slate-600 leading-tight uppercase line-clamp-2 tracking-tight">
                     {entry.suggestionLibre}
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Plus className="text-slate-300" size={20} />
+                <div className="flex items-center justify-center h-full pt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                    <Plus size={20} />
+                  </div>
                 </div>
               )}
             </div>
@@ -271,21 +325,16 @@ export function PlanningPage() {
           {autoSuggestions.map((r, idx) => (
             <div 
               key={`auto-${r.id}`} 
-              className="card p-5 space-y-4 relative group opacity-60 hover:opacity-100 transition-all border-dashed border-slate-200 cursor-pointer hover:border-emerald-200"
+              className="card p-5 space-y-4 relative group opacity-60 hover:opacity-100 transition-all border-dashed border-slate-200 cursor-pointer hover:border-emerald-200 overflow-visible"
               onClick={() => {
                 const now = new Date();
-                const timestampDate = `1900-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}.${now.getMilliseconds()}`;
-                // Using a slightly more unique but valid-ish format if allowed, or just 1900 and trust uuid if column is text
-                // If it's DATE type, we must use YYYY-MM-DD. Let's use a unique sequence for suggestions.
-                const uniqueSuggestDate = `1900-01-${(planning.filter(p => p.date.startsWith('1900-')).length + 1).toString().padStart(2, '0')}`;
-                // Actually, let's use a random day in year 1900 to avoid collisions
                 const randomDay = Math.floor(Math.random() * 28) + 1;
                 const randomMonth = Math.floor(Math.random() * 12) + 1;
                 const dateString = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
                 setPlanningEntry(dateString, r.id, null);
               }}
             >
-              <div className="absolute -top-2 -right-2 bg-emerald-100 text-emerald-600 text-[8px] font-black uppercase tracking-tighter px-2 py-1 rounded-full shadow-sm">
+              <div className="absolute top-2 right-2 bg-emerald-50 text-emerald-600 text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-lg border border-emerald-100 shadow-sm group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition-all transform group-hover:scale-105">
                 Suggestion
               </div>
               <div className="flex items-center gap-4 grayscale group-hover:grayscale-0 transition-all">

@@ -1,10 +1,38 @@
-import React from 'react';
-import { User, LogOut, Shield, Bell, Smartphone, Heart } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, LogOut, Shield, Bell, Smartphone, Heart, Database, Trash2, CheckCircle2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
+import { useStore } from '../store';
 import { motion } from 'motion/react';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
+  const { recettes, clearBase64Images } = useStore();
+
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanMessage, setCleanMessage] = useState<string | null>(null);
+
+  const base64Count = recettes.filter(r => r.image && (r.image.startsWith('data:') || (r.image.length > 500 && !r.image.startsWith('http')))).length;
+  const storageUrlCount = recettes.filter(r => r.image && r.image.startsWith('http')).length;
+  const noImageCount = recettes.filter(r => !r.image).length;
+
+  const handleClearBase64 = async () => {
+    if (base64Count === 0) {
+      setCleanMessage("Aucune image en Base64 n'a été détectée dans vos recettes.");
+      return;
+    }
+
+    try {
+      setCleaning(true);
+      setCleanMessage(null);
+      const res = await clearBase64Images();
+      setCleanMessage(`Succès ! ${res.cleanedCount} image(s) Base64 ont été retirées de la base de données Supabase.`);
+    } catch (err: any) {
+      console.error("Error clearing base64 images:", err);
+      setCleanMessage("Une erreur est survenue lors du nettoyage.");
+    } finally {
+      setCleaning(false);
+    }
+  };
 
   return (
     <motion.div 
@@ -29,6 +57,79 @@ export function SettingsPage() {
             <p className="text-slate-500 text-sm">{user?.email}</p>
             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
               Compte vérifié
+            </div>
+          </div>
+        </div>
+
+        {/* Supabase Storage & Database Image Cleaner */}
+        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700 shadow-sm">
+              <Database size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-base">Optimisation Base de données & Storage</h3>
+              <p className="text-xs text-slate-500">Stockage dans le bucket Supabase <span className="font-semibold text-emerald-700">recipe-images</span></p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white p-3 rounded-2xl border border-slate-100 text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base64 (à purifier)</p>
+              <p className={`text-xl font-black mt-1 ${base64Count > 0 ? 'text-amber-600' : 'text-slate-700'}`}>{base64Count}</p>
+            </div>
+            <div className="bg-white p-3 rounded-2xl border border-slate-100 text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">URL Storage</p>
+              <p className="text-xl font-black text-emerald-600 mt-1">{storageUrlCount}</p>
+            </div>
+            <div className="bg-white p-3 rounded-2xl border border-slate-100 text-center">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sans image</p>
+              <p className="text-xl font-black text-slate-600 mt-1">{noImageCount}</p>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-1">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Pour éviter de charger des chaînes de caractères Base64 trop lourdes dans la base de données, vous pouvez purger les images en Base64 existantes. 
+              Vous pourrez ensuite réimporter les images de vos recettes via le bucket <strong className="text-slate-800">recipe-images</strong> de Supabase Storage.
+            </p>
+
+            {cleanMessage && (
+              <div className="flex items-center gap-2 text-xs font-semibold p-3 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-100">
+                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <span>{cleanMessage}</span>
+              </div>
+            )}
+
+            <button
+              onClick={handleClearBase64}
+              disabled={cleaning || base64Count === 0}
+              className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                base64Count > 0
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/10'
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              {cleaning ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Purge en cours dans la base de données...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 size={16} />
+                  <span>Purger les {base64Count} image(s) Base64 de la BDD</span>
+                </>
+              )}
+            </button>
+
+            <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-2 text-xs">
+              <p className="font-bold text-slate-800">💡 Résolution rapide si Supabase Storage renvoie une erreur :</p>
+              <p className="text-slate-600 leading-relaxed text-[11px]">
+                1. Dans votre Dashboard Supabase &gt; <strong>Storage</strong>, créez le bucket nommé <code className="bg-slate-100 px-1 py-0.5 rounded font-mono text-emerald-700">recipe-images</code> et décochez "Restricted" / activez <strong>Public Bucket</strong>.<br />
+                2. Dans <strong>Policies</strong> pour ce bucket, ajoutez la règle <code className="bg-slate-100 px-1 py-0.5 rounded font-mono">INSERT</code> pour le rôle public (<code className="bg-slate-100 px-1 py-0.5 rounded font-mono">anon</code>/ authenticated).<br />
+                3. Vous pouvez aussi téléverser vos fichiers directement sur le Dashboard Supabase et coller leur URL dans les fiches recettes.
+              </p>
             </div>
           </div>
         </div>
@@ -90,7 +191,7 @@ export function SettingsPage() {
           </span>
         </div>
         <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-relaxed">
-          Version 2.0.0 • Supabase Cloud Sync
+          Version 2.0.0 • Supabase Cloud Sync & Storage
         </p>
       </div>
     </motion.div>

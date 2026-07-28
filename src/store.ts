@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Recette, PlanningEntry, ShoppingItem, AppState } from './types';
-import { supabase } from './lib/supabase';
+import { supabase, uploadImageToSupabase } from './lib/supabase';
 
 interface StoreState extends AppState {
   loading: boolean;
@@ -19,6 +19,7 @@ interface StoreActions {
   addRecette: (recette: Recette) => Promise<void>;
   updateRecette: (recette: Recette) => Promise<void>;
   deleteRecette: (id: string) => Promise<void>;
+  clearBase64Images: () => Promise<{ cleanedCount: number }>;
   
   // Planning
   setPlanningEntry: (date: string, recetteId: string | null, suggestionLibre: string | null) => Promise<void>;
@@ -39,6 +40,82 @@ const initialData: AppState = {
   courses: [],
 };
 
+async function saveRecipeToDatabase(finalRecette: Recette, userId: string) {
+  const payload: Record<string, any> = {
+    id: finalRecette.id,
+    nom: finalRecette.nom,
+    categorie: finalRecette.categorie,
+    portions: finalRecette.portions,
+    prepMin: finalRecette.prepMin,
+    cuissonMin: finalRecette.cuissonMin,
+    calories: finalRecette.calories,
+    ingredients: finalRecette.ingredients,
+    instructions: finalRecette.instructions,
+    image: finalRecette.image || '',
+    estIA: finalRecette.estIA ?? false,
+    favori: finalRecette.favori ?? false,
+    user_id: userId
+  };
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const res = await supabase.from('recipes').upsert(payload, { onConflict: 'id' });
+
+    if (!res.error) {
+      return; // Success!
+    }
+
+    const errMessage = res.error.message || '';
+    console.warn(`Supabase upsert attempt ${attempt + 1} failed:`, errMessage);
+
+    // Extract missing column name if PostgREST rejected it
+    const match = errMessage.match(/Could not find the '([^']+)' column/i) || 
+                  errMessage.match(/column "([^"]+)" of relation "recipes" does not exist/i) ||
+                  errMessage.match(/column "([^"]+)" does not exist/i) ||
+                  errMessage.match(/column '([^']+)' does not exist/i);
+
+    if (match && match[1]) {
+      const missingCol = match[1];
+      console.warn(`Column '${missingCol}' missing in Supabase schema. Adapting payload...`);
+
+      // If camelCase time or image/flag columns are missing, attempt snake_case mapping
+      if (missingCol === 'prepMin' && !('prep_min' in payload)) {
+        delete payload.prepMin;
+        payload.prep_min = finalRecette.prepMin;
+        continue;
+      }
+      if (missingCol === 'cuissonMin' && !('cuisson_min' in payload)) {
+        delete payload.cuissonMin;
+        payload.cuisson_min = finalRecette.cuissonMin;
+        continue;
+      }
+      if (missingCol === 'estIA' && !('est_ia' in payload)) {
+        delete payload.estIA;
+        payload.est_ia = finalRecette.estIA ?? false;
+        continue;
+      }
+      if (missingCol === 'image' && !('image_url' in payload)) {
+        delete payload.image;
+        payload.image_url = finalRecette.image || '';
+        continue;
+      }
+
+      // If missing column is in payload, remove it to allow saving the rest of the recipe
+      if (missingCol in payload) {
+        delete payload[missingCol];
+        continue;
+      }
+    }
+
+    // Try direct update fallback
+    const updateRes = await supabase.from('recipes').update(payload).eq('id', finalRecette.id).eq('user_id', userId);
+    if (!updateRes.error) {
+      return;
+    }
+
+    throw new Error(res.error.message);
+  }
+}
+
 export const useStore = create<StoreState & StoreActions>()(
   (set, get) => ({
     ...initialData,
@@ -55,34 +132,59 @@ export const useStore = create<StoreState & StoreActions>()(
 
     syncWithSupabase: async () => {
       const userId = get().currentUserId;
-      if (!userId) return;
 
       set({ loading: true });
       try {
+        const recipeQuery = userId 
+          ? supabase.from('recipes').select('*').or(`user_id.eq.${userId},user_id.is.null`)
+          : supabase.from('recipes').select('*').is('user_id', null);
+
+        const planningQuery = userId
+          ? supabase.from('planning').select('*').or(`user_id.eq.${userId},user_id.is.null`)
+          : supabase.from('planning').select('*').is('user_id', null);
+
+        const shoppingQuery = userId
+          ? supabase.from('shopping_items').select('*').or(`user_id.eq.${userId},user_id.is.null`)
+          : supabase.from('shopping_items').select('*').is('user_id', null);
+
         const [recipesRes, planningRes, shoppingRes] = await Promise.all([
-          supabase.from('recipes').select('*').eq('user_id', userId),
-          supabase.from('planning').select('*').eq('user_id', userId),
-          supabase.from('shopping_items').select('*').eq('user_id', userId),
+          recipeQuery,
+          planningQuery,
+          shoppingQuery,
         ]);
 
         if (recipesRes.error) throw recipesRes.error;
         if (planningRes.error) throw planningRes.error;
         if (shoppingRes.error) throw shoppingRes.error;
 
+        const safeParseArray = (val: any) => {
+          if (Array.isArray(val)) return val;
+          if (typeof val === 'string') {
+            try {
+              const p = JSON.parse(val);
+              if (Array.isArray(p)) return p;
+            } catch {
+              return [];
+            }
+          }
+          return [];
+        };
+
         // Map Supabase columns to camelCase for recipes
         const mappedRecipes = (recipesRes.data || []).map((r: any) => ({
           id: r.id,
-          nom: r.nom,
-          categorie: r.categorie,
-          portions: r.portions,
-          prepMin: r.prepMin,
-          cuissonMin: r.cuissonMin,
-          calories: r.calories,
-          ingredients: r.ingredients,
-          instructions: r.instructions,
-          estIA: r.estIA ?? false,
-          image: r.image ?? '',
-          dateCreation: r.created_at || r.dateCreation
+          nom: r.nom || 'Sans nom',
+          categorie: r.categorie || 'Autre',
+          portions: Number(r.portions) || 4,
+          prepMin: Number(r.prepMin ?? r.prep_min ?? 0),
+          cuissonMin: Number(r.cuissonMin ?? r.cuisson_min ?? 0),
+          calories: r.calories ? Number(r.calories) : undefined,
+          ingredients: safeParseArray(r.ingredients),
+          instructions: safeParseArray(r.instructions),
+          estIA: r.estIA ?? r.est_ia ?? false,
+          favori: r.favori ?? false,
+          image: r.image ?? r.image_url ?? '',
+          dateCreation: r.created_at || r.dateCreation || new Date().toISOString()
         }));
 
         // Map snake_case to camelCase for planning
@@ -114,31 +216,24 @@ export const useStore = create<StoreState & StoreActions>()(
         id: (recette.id && recette.id.length > 10) ? recette.id : crypto.randomUUID()
       };
 
+      // Automatically upload base64 images to Supabase Storage if needed
+      if (finalRecette.image && finalRecette.image.startsWith('data:image/')) {
+        try {
+          const storageUrl = await uploadImageToSupabase(finalRecette.image, userId);
+          finalRecette.image = storageUrl;
+        } catch (uploadErr) {
+          console.error("Image upload to storage failed:", uploadErr);
+        }
+      }
+
       set({ recettes: [finalRecette, ...prevRecettes] });
 
       if (userId) {
         try {
-          const { error } = await supabase.from('recipes').insert([{
-            id: finalRecette.id,
-            nom: finalRecette.nom,
-            categorie: finalRecette.categorie,
-            portions: finalRecette.portions,
-            prepMin: finalRecette.prepMin,
-            cuissonMin: finalRecette.cuissonMin,
-            calories: finalRecette.calories,
-            ingredients: finalRecette.ingredients,
-            instructions: finalRecette.instructions,
-            image: finalRecette.image,
-            estIA: finalRecette.estIA,
-            user_id: userId
-          }]);
-          if (error) {
-            console.error('Supabase Error Details:', error);
-            throw error;
-          }
+          await saveRecipeToDatabase(finalRecette, userId);
         } catch (err: any) {
           console.error('Catch Error adding recipe:', err);
-          set({ recettes: prevRecettes, error: err.message });
+          set({ error: `Erreur sauvegarde Supabase: ${err.message}` });
         }
       }
     },
@@ -146,28 +241,28 @@ export const useStore = create<StoreState & StoreActions>()(
     updateRecette: async (recette) => {
       const userId = get().currentUserId;
       const prevRecettes = get().recettes;
+
+      const finalRecette = { ...recette };
+      // Automatically upload base64 images to Supabase Storage if needed
+      if (finalRecette.image && finalRecette.image.startsWith('data:image/')) {
+        try {
+          const storageUrl = await uploadImageToSupabase(finalRecette.image, userId);
+          finalRecette.image = storageUrl;
+        } catch (uploadErr) {
+          console.error("Image upload to storage failed:", uploadErr);
+        }
+      }
+
       set({
-        recettes: prevRecettes.map(r => r.id === recette.id ? recette : r)
+        recettes: prevRecettes.map(r => r.id === finalRecette.id ? finalRecette : r)
       });
 
       if (userId) {
         try {
-          const { error } = await supabase.from('recipes').update({
-            nom: recette.nom,
-            categorie: recette.categorie,
-            portions: recette.portions,
-            prepMin: recette.prepMin,
-            cuissonMin: recette.cuissonMin,
-            calories: recette.calories,
-            ingredients: recette.ingredients,
-            instructions: recette.instructions,
-            image: recette.image,
-            estIA: recette.estIA,
-          }).eq('id', recette.id).eq('user_id', userId);
-          if (error) throw error;
+          await saveRecipeToDatabase(finalRecette, userId);
         } catch (err: any) {
           console.error('Error updating recipe:', err);
-          set({ recettes: prevRecettes, error: err.message });
+          set({ error: `Erreur mise à jour Supabase: ${err.message}` });
         }
       }
     },
@@ -190,6 +285,43 @@ export const useStore = create<StoreState & StoreActions>()(
           set({ recettes: prevRecettes, planning: prevPlanning, error: err.message });
         }
       }
+    },
+
+    clearBase64Images: async () => {
+      const userId = get().currentUserId;
+      const recettes = get().recettes;
+
+      const base64Items = recettes.filter(r => r.image && (r.image.startsWith('data:') || (r.image.length > 500 && !r.image.startsWith('http'))));
+      if (base64Items.length === 0) {
+        return { cleanedCount: 0 };
+      }
+
+      // Update local state by stripping base64 images
+      const updatedRecettes = recettes.map(r => {
+        if (r.image && (r.image.startsWith('data:') || (r.image.length > 500 && !r.image.startsWith('http')))) {
+          return { ...r, image: '' };
+        }
+        return r;
+      });
+
+      set({ recettes: updatedRecettes });
+
+      // Update Supabase DB table 'recipes'
+      if (userId) {
+        for (const r of base64Items) {
+          try {
+            await supabase
+              .from('recipes')
+              .update({ image: '' })
+              .eq('id', r.id)
+              .eq('user_id', userId);
+          } catch (err) {
+            console.error(`Error clearing base64 image for recipe ${r.id}:`, err);
+          }
+        }
+      }
+
+      return { cleanedCount: base64Items.length };
     },
 
     setPlanningEntry: async (date, recetteId, suggestionLibre) => {

@@ -3,6 +3,8 @@ import { motion } from 'motion/react';
 import { X, Plus, Trash2, Image as ImageIcon, Sparkles, Loader2, Clipboard } from 'lucide-react';
 import { Recette, CategorieRecette, Ingredient, Instruction } from '../types';
 import { parseRecipe } from '../geminiService';
+import { uploadImageToSupabase, convertAndResizeToWebp } from '../lib/supabase';
+import { useStore } from '../store';
 
 interface RecipeFormModalProps {
   recette: Recette | null;
@@ -83,21 +85,50 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.nom) return;
-    onSave(formData as Recette);
+  const currentUserId = useStore(state => state.currentUserId);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+
+  const processImageFile = async (file: File) => {
+    try {
+      setUploadingImage(true);
+      setImageUploadError(null);
+      const publicUrl = await uploadImageToSupabase(file, currentUserId);
+      setFormData(prev => ({ ...prev, image: publicUrl }));
+    } catch (err: any) {
+      console.error('Storage upload error:', err);
+      setImageUploadError(err?.message || "Erreur lors du téléversement sur Supabase Storage.");
+      try {
+        const processed = await convertAndResizeToWebp(file, 1000);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData(prev => ({ ...prev, image: reader.result as string }));
+        };
+        reader.readAsDataURL(processed.blob);
+      } catch {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData(prev => ({ ...prev, image: reader.result as string }));
+        };
+        reader.readAsDataURL(file);
+      }
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, image: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      processImageFile(file);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.nom) return;
+    if (uploadingImage) return;
+    onSave(formData as Recette);
   };
 
   return (
@@ -181,7 +212,14 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
               )}
 
               <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Image</label>
+                <div className="flex justify-between items-center ml-1">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Image</label>
+                  {formData.image && (formData.image.startsWith('http://') || formData.image.startsWith('https://')) && (
+                    <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      Stockée via URL / Storage
+                    </span>
+                  )}
+                </div>
                 <div 
                   className={`relative h-40 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all ${
                     dragActive ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
@@ -193,15 +231,16 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                     setDragActive(false);
                     const file = e.dataTransfer.files[0];
                     if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setFormData(prev => ({ ...prev, image: reader.result as string }));
-                      };
-                      reader.readAsDataURL(file);
+                      processImageFile(file);
                     }
                   }}
                 >
-                  {formData.image ? (
+                  {uploadingImage ? (
+                    <div className="flex flex-col items-center gap-2 text-emerald-600 p-4 text-center">
+                      <Loader2 size={28} className="animate-spin" />
+                      <p className="text-xs font-semibold">Téléversement sur Supabase Storage...</p>
+                    </div>
+                  ) : formData.image ? (
                     <>
                       <img src={formData.image} alt="Prévisualisation" className="w-full h-full object-cover" />
                       <button 
@@ -215,7 +254,7 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                   ) : (
                     <>
                       <ImageIcon size={32} className="text-slate-300 mb-2" />
-                      <p className="text-xs text-slate-400 font-medium">Glissez ou cliquez pour uploader</p>
+                      <p className="text-xs text-slate-400 font-medium">Glissez ou cliquez pour uploader sur Supabase Storage</p>
                       <input 
                         type="file" 
                         accept="image/*"
@@ -224,6 +263,36 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                       />
                     </>
                   )}
+                </div>
+                {imageUploadError && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-2 text-xs text-amber-900">
+                    <p className="font-bold flex items-center gap-1.5 text-amber-800">
+                      <span>⚠️</span> {imageUploadError}
+                    </p>
+                    <div className="text-[11px] text-amber-800/90 space-y-1 pl-1 leading-relaxed">
+                      <p><strong>Solution Supabase Storage :</strong></p>
+                      <ul className="list-disc list-inside space-y-0.5 text-[10px]">
+                        <li>Vérifiez que le bucket <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">recipe-images</code> est bien créé et activé en <strong>Public</strong> dans votre Dashboard Supabase &gt; Storage.</li>
+                        <li>Dans Storage &gt; Policies, ajoutez une politique d'autorisation <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">INSERT</code> pour le rôle <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">anon</code> ou <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">authenticated</code>.</li>
+                        <li><strong>Alternative simple :</strong> Téléversez l'image sur Supabase Storage depuis le navigateur et collez son URL publique (<code className="bg-amber-100 px-1 py-0.5 rounded font-mono">https://...</code>) dans le champ ci-dessous.</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+                <div className="pt-1">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">
+                    URL d'image Supabase Storage ou Web
+                  </label>
+                  <input 
+                    type="text"
+                    value={formData.image || ''}
+                    onChange={e => {
+                      setImageUploadError(null);
+                      setFormData(prev => ({ ...prev, image: e.target.value }));
+                    }}
+                    placeholder="Collez l'URL de votre image Supabase Storage (https://...)"
+                    className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 outline-none text-slate-700 font-medium"
+                  />
                 </div>
               </div>
 
@@ -441,9 +510,17 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
           <button 
             type="submit" 
             onClick={handleSubmit}
-            className="flex-[2] btn-primary text-sm shadow-md"
+            disabled={uploadingImage}
+            className={`flex-[2] btn-primary text-sm shadow-md flex items-center justify-center gap-2 ${uploadingImage ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
-            {recette ? 'Sauvegarder les modifications' : 'Créer la recette'}
+            {uploadingImage ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Téléversement de l'image...</span>
+              </>
+            ) : (
+              recette ? 'Sauvegarder les modifications' : 'Créer la recette'
+            )}
           </button>
         </div>
       </motion.div>

@@ -29,6 +29,7 @@ export interface Recette {
   ingredients: Ingredient[];
   instructions: Instruction[];
   estIA: boolean;
+  favori: boolean;
   dateCreation: string;
 }
 
