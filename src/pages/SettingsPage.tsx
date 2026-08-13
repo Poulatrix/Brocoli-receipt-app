@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { User, LogOut, Shield, Bell, Smartphone, Heart, Database, Trash2, CheckCircle2, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { User, LogOut, Shield, Bell, Smartphone, Heart, Database, Trash2, CheckCircle2, Image as ImageIcon, Loader2, MessageSquarePlus, Bug, Lightbulb, ChevronRight } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useStore } from '../store';
 import { motion } from 'motion/react';
+import { FeedbackModal } from '../components/FeedbackModal';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -10,6 +11,7 @@ export function SettingsPage() {
 
   const [cleaning, setCleaning] = useState(false);
   const [cleanMessage, setCleanMessage] = useState<string | null>(null);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   const base64Count = recettes.filter(r => r.image && (r.image.startsWith('data:') || (r.image.length > 500 && !r.image.startsWith('http')))).length;
   const storageUrlCount = recettes.filter(r => r.image && r.image.startsWith('http')).length;
@@ -58,6 +60,39 @@ export function SettingsPage() {
             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
               Compte vérifié
             </div>
+          </div>
+        </div>
+
+        {/* Feedback & Bug report section */}
+        <div className="p-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 rounded-3xl border border-emerald-100/80 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-emerald-600 text-white rounded-2xl flex items-center justify-center shadow-md shadow-emerald-600/20">
+                <MessageSquarePlus size={22} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Avis & Suggestions</h3>
+                <p className="text-xs text-slate-500">Un bug à signaler ou une idée d'amélioration ?</p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold uppercase tracking-wider">
+              Communauté
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Votre avis compte énormément ! Transmettez-nous vos retours d'expérience, signalez un dysfonctionnement ou proposez les nouvelles fonctionnalités que vous aimeriez voir dans l'application.
+          </p>
+
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              onClick={() => setIsFeedbackOpen(true)}
+              className="w-full flex items-center justify-center gap-2 py-3 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold transition-all shadow-md shadow-emerald-600/20 active:scale-[0.99]"
+            >
+              <Bug size={16} />
+              <span>Signaler un bug ou proposer une idée</span>
+              <ChevronRight size={16} className="ml-1 opacity-70" />
+            </button>
           </div>
         </div>
 
@@ -191,9 +226,14 @@ export function SettingsPage() {
           </span>
         </div>
         <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-relaxed">
-          Version 2.0.0 • Supabase Cloud Sync & Storage
+          Version 2.1.0 • Supabase Cloud Sync & Storage
         </p>
       </div>
+
+      <FeedbackModal 
+        isOpen={isFeedbackOpen} 
+        onClose={() => setIsFeedbackOpen(false)} 
+      />
     </motion.div>
   );
 }

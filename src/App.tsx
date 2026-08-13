@@ -4,8 +4,9 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChefHat, Calendar, ShoppingCart, Settings, Terminal, X } from 'lucide-react';
+import { Home, ChefHat, Calendar, ShoppingCart, Settings, Terminal, X } from 'lucide-react';
 import { Navbar } from './components/Navbar';
+import { HomePage } from './pages/HomePage';
 import { RecipesPage } from './pages/RecipesPage';
 import { PlanningPage } from './pages/PlanningPage';
 import { ShoppingListPage } from './pages/ShoppingListPage';
@@ -16,14 +17,15 @@ import { useStore } from './store';
 import { Login } from './components/Login';
 
 const TABS = [
-  { id: 'recettes', label: 'Accueil', icon: ChefHat },
+  { id: 'home', label: 'Accueil', icon: Home },
+  { id: 'recettes', label: 'Recettes', icon: ChefHat },
   { id: 'planning', label: 'Planning', icon: Calendar },
   { id: 'courses', label: 'Courses', icon: ShoppingCart },
-  { id: 'settings', label: 'Utilisateurs', icon: Settings },
+  { id: 'settings', label: 'Paramètres', icon: Settings },
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('recettes');
+  const [activeTab, setActiveTab] = useState('home');
   const { user, loading: authLoading } = useAuth();
   const { setUserId, loading: storeLoading, error: storeError, setError } = useStore();
 
@@ -37,6 +39,8 @@ export default function App() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'home':
+        return <HomePage key="home" onNavigate={setActiveTab} />;
       case 'recettes':
         return <RecipesPage key="recettes" />;
       case 'planning':
@@ -46,7 +50,7 @@ export default function App() {
       case 'settings':
         return <SettingsPage key="settings" />;
       default:
-        return null;
+        return <HomePage key="home" onNavigate={setActiveTab} />;
     }
   };
 

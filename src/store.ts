@@ -54,6 +54,7 @@ async function saveRecipeToDatabase(finalRecette: Recette, userId: string) {
     image: finalRecette.image || '',
     estIA: finalRecette.estIA ?? false,
     favori: finalRecette.favori ?? false,
+    saison: finalRecette.saison || 'toute_annee',
     user_id: userId
   };
 
@@ -183,6 +184,7 @@ export const useStore = create<StoreState & StoreActions>()(
           instructions: safeParseArray(r.instructions),
           estIA: r.estIA ?? r.est_ia ?? false,
           favori: r.favori ?? false,
+          saison: r.saison || 'toute_annee',
           image: r.image ?? r.image_url ?? '',
           dateCreation: r.created_at || r.dateCreation || new Date().toISOString()
         }));

@@ -11,6 +11,7 @@ export function PlanningPage() {
   const [isAssigning, setIsAssigning] = useState<{ date: string } | null>(null);
   const [selectedSuggest, setSelectedSuggest] = useState<PlanningEntry | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [suggestSearchTerm, setSuggestSearchTerm] = useState('');
   const [newSuggestion, setNewSuggestion] = useState('');
   const [showShoppingTools, setShowShoppingTools] = useState(false);
   const [selectedForShopping, setSelectedForShopping] = useState<string[]>([]);
@@ -21,6 +22,10 @@ export function PlanningPage() {
 
   const filteredRecettes = recettes.filter(r => 
     r.nom.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredSuggestRecettes = recettes.filter(r => 
+    r.nom.toLowerCase().includes(suggestSearchTerm.toLowerCase())
   );
 
   const autoSuggestions = useMemo(() => {
@@ -511,87 +516,127 @@ export function PlanningPage() {
 
         {isAssigning && isAssigning.date === 'suggest' && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAssigning(null)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setIsAssigning(null); setSuggestSearchTerm(''); setNewSuggestion(''); }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              className="relative bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-6"
+              className="relative bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-5"
             >
-               <h3 className="text-xl font-bold text-gray-900">Nouvelle suggestion</h3>
+               <div className="flex justify-between items-center">
+                 <h3 className="text-xl font-bold text-slate-900">Nouvelle suggestion</h3>
+                 <button 
+                  onClick={() => { setIsAssigning(null); setSuggestSearchTerm(''); setNewSuggestion(''); }} 
+                  className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                 >
+                   <X size={18} />
+                 </button>
+               </div>
                
                <div className="space-y-4">
                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Choisir une recette existante</label>
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                      {recettes.map(r => (
-                        <button 
-                         key={r.id}
-                         onClick={() => {
-                           const randomDay = Math.floor(Math.random() * 28) + 1;
-                           const randomMonth = Math.floor(Math.random() * 12) + 1;
-                           const finalDate = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
-                           setPlanningEntry(finalDate, r.id, null);
-                           setIsAssigning(null);
-                         }}
-                         className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 text-left transition-colors"
-                        >
-                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                            <img src={r.image || `https://picsum.photos/seed/${r.id}/32/32`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
-                          </div>
-                          <span className="text-sm font-medium line-clamp-1">{r.nom}</span>
-                        </button>
-                      ))}
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Choisir une recette existante</label>
+                    <div className="relative mb-2">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input 
+                        type="text" 
+                        placeholder="Rechercher parmi vos recettes..."
+                        value={suggestSearchTerm}
+                        onChange={(e) => setSuggestSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-xs font-medium"
+                      />
+                    </div>
+
+                    <div className="space-y-1 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
+                      {filteredSuggestRecettes.length > 0 ? (
+                        filteredSuggestRecettes.map(r => (
+                          <button 
+                            key={r.id}
+                            onClick={() => {
+                              const randomDay = Math.floor(Math.random() * 28) + 1;
+                              const randomMonth = Math.floor(Math.random() * 12) + 1;
+                              const finalDate = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
+                              setPlanningEntry(finalDate, r.id, null);
+                              setIsAssigning(null);
+                              setSuggestSearchTerm('');
+                            }}
+                            className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-emerald-50 border border-transparent hover:border-emerald-100 text-left transition-all group"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-9 h-9 rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
+                                <img src={r.image || `https://picsum.photos/seed/${r.id}/36/36`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-emerald-900">{r.nom}</p>
+                                <p className="text-[10px] text-slate-400 font-medium">{r.categorie}</p>
+                              </div>
+                            </div>
+                            <Plus size={16} className="text-slate-300 group-hover:text-emerald-600 shrink-0" />
+                          </button>
+                        ))
+                      ) : (
+                        <div className="text-center py-4 text-xs text-slate-400 italic">
+                          Aucune recette ne correspond à "{suggestSearchTerm}"
+                        </div>
+                      )}
                     </div>
                  </div>
 
-                 <div className="relative flex items-center gap-2 py-2">
-                   <div className="h-px flex-1 bg-gray-100"></div>
-                   <span className="text-[10px] font-bold text-gray-300">OU</span>
-                   <div className="h-px flex-1 bg-gray-100"></div>
+                 <div className="relative flex items-center gap-2 py-1">
+                   <div className="h-px flex-1 bg-slate-100"></div>
+                   <span className="text-[10px] font-bold text-slate-300 uppercase">OU IDÉE LIBRE</span>
+                   <div className="h-px flex-1 bg-slate-100"></div>
                  </div>
 
                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Idée libre</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Idée libre</label>
                     <div className="flex gap-2">
                       <input 
                         type="text" 
                         value={newSuggestion || ''}
                         onChange={(e) => setNewSuggestion(e.target.value)}
-                        placeholder="ex: Commande de sushis"
-                        className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 outline-none text-sm"
+                        placeholder="ex: Commande de sushis, Soirée tacos..."
+                        className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-xs font-medium"
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newSuggestion) {
+                          if (e.key === 'Enter' && newSuggestion.trim()) {
                             const randomDay = Math.floor(Math.random() * 28) + 1;
                             const randomMonth = Math.floor(Math.random() * 12) + 1;
                             const dateString = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
-                            setPlanningEntry(dateString, null, newSuggestion);
+                            setPlanningEntry(dateString, null, newSuggestion.trim());
                             setNewSuggestion('');
+                            setSuggestSearchTerm('');
                             setIsAssigning(null);
                           }
                         }}
                       />
                       <button 
                         onClick={() => {
-                          if (newSuggestion) {
+                          if (newSuggestion.trim()) {
                             const randomDay = Math.floor(Math.random() * 28) + 1;
                             const randomMonth = Math.floor(Math.random() * 12) + 1;
                             const dateString = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
-                            setPlanningEntry(dateString, null, newSuggestion);
+                            setPlanningEntry(dateString, null, newSuggestion.trim());
                             setNewSuggestion('');
+                            setSuggestSearchTerm('');
                             setIsAssigning(null);
                           }
                         }}
-                        disabled={!newSuggestion}
-                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                        disabled={!newSuggestion.trim()}
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 text-xs flex items-center gap-1"
                       >
-                        <Plus size={18} />
+                        <Plus size={16} />
+                        <span>Ajouter</span>
                       </button>
                     </div>
                  </div>
                </div>
 
-               <button onClick={() => setIsAssigning(null)} className="w-full py-3 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-colors">Annuler</button>
+               <button 
+                onClick={() => { setIsAssigning(null); setSuggestSearchTerm(''); setNewSuggestion(''); }} 
+                className="w-full py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors"
+               >
+                 Annuler
+               </button>
             </motion.div>
           </div>
         )}

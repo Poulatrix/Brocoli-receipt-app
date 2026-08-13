@@ -3,6 +3,7 @@
  */
 
 export type CategorieRecette = string;
+export type SaisonRecette = 'ete' | 'hiver' | 'toute_annee';
 
 export interface Ingredient {
   id: string;
@@ -30,6 +31,7 @@ export interface Recette {
   instructions: Instruction[];
   estIA: boolean;
   favori: boolean;
+  saison?: SaisonRecette;
   dateCreation: string;
 }
 

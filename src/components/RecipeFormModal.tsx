@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, Plus, Trash2, Image as ImageIcon, Sparkles, Loader2, Clipboard } from 'lucide-react';
+import { X, Plus, Trash2, Image as ImageIcon, Sparkles, Loader2, Clipboard, Camera, Upload, CheckCircle2, FileText } from 'lucide-react';
 import { Recette, CategorieRecette, Ingredient, Instruction } from '../types';
-import { parseRecipe } from '../geminiService';
+import { parseRecipe, parseRecipeFromImage } from '../geminiService';
 import { uploadImageToSupabase, convertAndResizeToWebp } from '../lib/supabase';
 import { useStore } from '../store';
 
@@ -10,17 +10,20 @@ interface RecipeFormModalProps {
   recette: Recette | null;
   onClose: () => void;
   onSave: (recette: Recette) => void;
+  initialShowIA?: boolean;
+  initialIAMode?: 'text' | 'photo';
 }
 
 const CATEGORIES: CategorieRecette[] = [
   'Viande', 'Poisson', 'Végétarien', 'Pâtes', 'Soupe', 'Dessert', 'Entrée', 'Autre'
 ];
 
-export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalProps) {
+export function RecipeFormModal({ recette, onClose, onSave, initialShowIA = false, initialIAMode = 'photo' }: RecipeFormModalProps) {
   const [formData, setFormData] = useState<Partial<Recette>>(
     recette || {
       nom: '',
       categorie: 'Viande',
+      saison: 'toute_annee',
       image: '',
       portions: 4,
       prepMin: 15,
@@ -34,25 +37,86 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
 
   const [isLoadingIA, setIsLoadingIA] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [showIAPaste, setShowIAPaste] = useState(false);
+  const [showIAPaste, setShowIAPaste] = useState(initialShowIA);
+  const [iaMode, setIaMode] = useState<'text' | 'photo'>(initialIAMode);
   const [rawRecipeText, setRawRecipeText] = useState('');
+
+  // AI Photo Analysis States
+  const [iaPhotoFile, setIaPhotoFile] = useState<File | null>(null);
+  const [iaPhotoPreview, setIaPhotoPreview] = useState<string | null>(null);
+  const [iaPhotoPrompt, setIaPhotoPrompt] = useState('');
+  const [usePhotoAsCover, setUsePhotoAsCover] = useState(true);
+  const [iaSuccessMsg, setIaSuccessMsg] = useState<string | null>(null);
 
   const handleIA = async () => {
     if (!rawRecipeText) return alert("Veuillez coller le texte de la recette.");
     setIsLoadingIA(true);
+    setIaSuccessMsg(null);
     const result = await parseRecipe(rawRecipeText);
     if (result) {
       setFormData(prev => ({
         ...prev,
         ...result,
-        ingredients: result.ingredients.map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
-        instructions: result.instructions.map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
+        ingredients: (result.ingredients || []).map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
+        instructions: (result.instructions || []).map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
         estIA: true
       }));
-      setShowIAPaste(false);
-      setRawRecipeText('');
+      setIaSuccessMsg("Recette générée avec succès depuis le texte !");
+      setTimeout(() => {
+        setShowIAPaste(false);
+        setRawRecipeText('');
+        setIaSuccessMsg(null);
+      }, 1500);
     } else {
       alert("Erreur lors de l'analyse avec l'IA. Vérifiez le format du texte.");
+    }
+    setIsLoadingIA(false);
+  };
+
+  const handleSelectIaPhoto = (file: File) => {
+    setIaPhotoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setIaPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleIAPhoto = async () => {
+    if (!iaPhotoFile || !iaPhotoPreview) {
+      alert("Veuillez d'abord choisir ou déposer une photo de recette / plat.");
+      return;
+    }
+    setIsLoadingIA(true);
+    setIaSuccessMsg(null);
+
+    const result = await parseRecipeFromImage(
+      iaPhotoPreview,
+      iaPhotoFile.type || 'image/jpeg',
+      iaPhotoPrompt
+    );
+
+    if (result) {
+      setFormData(prev => ({
+        ...prev,
+        ...result,
+        ingredients: (result.ingredients || []).map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
+        instructions: (result.instructions || []).map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
+        estIA: true
+      }));
+
+      // Set photo as recipe image if requested
+      if (usePhotoAsCover && iaPhotoFile) {
+        processImageFile(iaPhotoFile);
+      }
+
+      setIaSuccessMsg("✨ Photo analysée avec succès ! La recette a été générée.");
+      setTimeout(() => {
+        setShowIAPaste(false);
+        setIaSuccessMsg(null);
+      }, 2000);
+    } else {
+      alert("L'IA n'a pas pu analyser cette photo. Essayez avec une image plus lisible ou ajoutez une consigne.");
     }
     setIsLoadingIA(false);
   };
@@ -184,30 +248,170 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
               </div>
 
               {showIAPaste && (
-                <div className="p-4 bg-slate-900 rounded-xl space-y-4 shadow-xl border border-slate-700">
+                <div className="p-4 bg-slate-900 rounded-xl space-y-4 shadow-2xl border border-slate-700">
                   <div className="flex justify-between items-center">
-                    <h4 className="text-white text-xs font-bold uppercase tracking-widest">Coller votre recette</h4>
-                    <button onClick={() => setShowIAPaste(false)} className="text-slate-400 hover:text-white">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={16} className="text-emerald-400" />
+                      <h4 className="text-white text-xs font-bold uppercase tracking-widest">Assistant Création IA</h4>
+                    </div>
+                    <button type="button" onClick={() => setShowIAPaste(false)} className="text-slate-400 hover:text-white p-1">
                       <X size={16} />
                     </button>
                   </div>
-                  <textarea 
-                    autoFocus
-                    placeholder="Collez ici les ingrédients, instructions ou l'URL de la recette..."
-                    rows={4}
-                    value={rawRecipeText || ''}
-                    onChange={e => setRawRecipeText(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white text-xs focus:ring-2 focus:ring-emerald-500/50 outline-none resize-none"
-                  />
-                  <button 
-                    type="button"
-                    onClick={handleIA}
-                    disabled={isLoadingIA || !rawRecipeText}
-                    className="w-full btn-primary text-xs flex justify-center items-center gap-2"
-                  >
-                    {isLoadingIA ? <Loader2 className="animate-spin" size={16} /> : <Clipboard size={16} />}
-                    <span>Analyser et Encaisser</span>
-                  </button>
+
+                  {/* Mode switcher tabs */}
+                  <div className="grid grid-cols-2 p-1 bg-slate-800 rounded-lg text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => setIaMode('photo')}
+                      className={`py-1.5 px-3 rounded-md flex items-center justify-center gap-2 transition-all ${
+                        iaMode === 'photo' 
+                          ? 'bg-emerald-600 text-white shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Camera size={14} />
+                      <span>Analyse Photo</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIaMode('text')}
+                      className={`py-1.5 px-3 rounded-md flex items-center justify-center gap-2 transition-all ${
+                        iaMode === 'text' 
+                          ? 'bg-emerald-600 text-white shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <FileText size={14} />
+                      <span>Texte / Lien</span>
+                    </button>
+                  </div>
+
+                  {iaSuccessMsg && (
+                    <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-lg flex items-center gap-2 text-emerald-300 text-xs font-medium animate-pulse">
+                      <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                      <span>{iaSuccessMsg}</span>
+                    </div>
+                  )}
+
+                  {iaMode === 'photo' ? (
+                    <div className="space-y-3">
+                      <p className="text-[11px] text-slate-300 leading-snug">
+                        Importez une photo de livre de recette, une fiche manuscrite, un plat préparé ou vos ingrédients !
+                      </p>
+
+                      <div className="relative border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-xl p-3 bg-slate-800/60 flex flex-col items-center justify-center text-center transition-all cursor-pointer">
+                        {iaPhotoPreview ? (
+                          <div className="relative w-full h-36 rounded-lg overflow-hidden group">
+                            <img src={iaPhotoPreview} alt="Aperçu photo recette" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIaPhotoFile(null);
+                                  setIaPhotoPreview(null);
+                                }}
+                                className="px-3 py-1.5 bg-red-600 text-white text-xs rounded-lg font-medium shadow-lg hover:bg-red-500 flex items-center gap-1"
+                              >
+                                <Trash2 size={12} />
+                                <span>Changer la photo</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="w-full h-28 flex flex-col items-center justify-center cursor-pointer p-2">
+                            <Camera size={28} className="text-emerald-400 mb-1.5" />
+                            <span className="text-xs font-semibold text-slate-200">
+                              Cliquez ou glissez une photo ici
+                            </span>
+                            <span className="text-[10px] text-slate-400 mt-0.5">
+                              Livre de cuisine, fiche manuscrite, plat ou frigo
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleSelectIaPhoto(file);
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
+
+                      {iaPhotoPreview && (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            placeholder="Instruction complémentaire (ex: pour 2 personnes, végétarien...)"
+                            value={iaPhotoPrompt}
+                            onChange={(e) => setIaPhotoPrompt(e.target.value)}
+                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-xs focus:ring-2 focus:ring-emerald-500/50 outline-none"
+                          />
+
+                          <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={usePhotoAsCover}
+                              onChange={(e) => setUsePhotoAsCover(e.target.checked)}
+                              className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500/50 bg-slate-800"
+                            />
+                            <span>Utiliser aussi cette photo comme image de la recette</span>
+                          </label>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleIAPhoto}
+                        disabled={isLoadingIA || !iaPhotoPreview}
+                        className="w-full btn-primary text-xs flex justify-center items-center gap-2 py-2.5 shadow-lg disabled:opacity-50"
+                      >
+                        {isLoadingIA ? (
+                          <>
+                            <Loader2 className="animate-spin" size={16} />
+                            <span>Analyse de la photo par Gemini IA...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} />
+                            <span>Analyser la photo et générer la recette</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <textarea
+                        autoFocus
+                        placeholder="Collez ici le texte d'une recette, des ingrédients ou un lien..."
+                        rows={4}
+                        value={rawRecipeText || ''}
+                        onChange={e => setRawRecipeText(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white text-xs focus:ring-2 focus:ring-emerald-500/50 outline-none resize-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleIA}
+                        disabled={isLoadingIA || !rawRecipeText}
+                        className="w-full btn-primary text-xs flex justify-center items-center gap-2 py-2.5 disabled:opacity-50"
+                      >
+                        {isLoadingIA ? (
+                          <>
+                            <Loader2 className="animate-spin" size={16} />
+                            <span>Génération en cours...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clipboard size={16} />
+                            <span>Générer la recette depuis le texte</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -353,6 +557,45 @@ export function RecipeFormModal({ recette, onClose, onSave }: RecipeFormModalPro
                     onChange={e => setFormData(prev => ({ ...prev, cuissonMin: parseInt(e.target.value) }))}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium"
                   />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Saison recommandée</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, saison: 'toute_annee' }))}
+                    className={`py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border transition-all ${
+                      (formData.saison || 'toute_annee') === 'toute_annee'
+                        ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                        : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>🌿 Toute l'année</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, saison: 'ete' }))}
+                    className={`py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border transition-all ${
+                      formData.saison === 'ete'
+                        ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
+                        : 'bg-amber-50/50 border-amber-100 text-amber-800 hover:bg-amber-100/60'
+                    }`}
+                  >
+                    <span>☀️ Été</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, saison: 'hiver' }))}
+                    className={`py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 border transition-all ${
+                      formData.saison === 'hiver'
+                        ? 'bg-sky-600 border-sky-600 text-white shadow-sm'
+                        : 'bg-sky-50/50 border-sky-100 text-sky-800 hover:bg-sky-100/60'
+                    }`}
+                  >
+                    <span>❄️ Hiver</span>
+                  </button>
                 </div>
               </div>
 

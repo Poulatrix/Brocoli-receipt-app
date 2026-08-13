@@ -23,7 +23,7 @@ export default async function handler(
 
   try {
     const responseData = await genAI.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.6-flash",
       contents: [{
         role: 'user',
         parts: [{

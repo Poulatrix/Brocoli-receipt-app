@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, LayoutGrid, List, Save, ChefHat, Filter, X, Heart } from 'lucide-react';
+import { Search, Plus, LayoutGrid, List, Save, ChefHat, Filter, X, Heart, Camera, Sparkles } from 'lucide-react';
 import { useStore } from '../store';
 import { Recette, CategorieRecette } from '../types';
 import { RecipeCard } from '../components/RecipeCard';
@@ -14,6 +14,7 @@ const CATEGORIES: (CategorieRecette | 'Tout')[] = [
 export function RecipesPage() {
   const { recettes, addRecette, updateRecette, deleteRecette, addToShoppingList } = useStore();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedSeason, setSelectedSeason] = useState<'tous' | 'ete' | 'hiver' | 'toute_annee'>('tous');
   const [maxTime, setMaxTime] = useState<number>(240);
 
   const allCategories = useMemo(() => {
@@ -58,7 +59,9 @@ export function RecipesPage() {
     const totalTime = Number(r.prepMin || 0) + Number(r.cuissonMin || 0);
     const matchesTime = maxTime >= 240 || totalTime <= maxTime;
     
-    return matchesCategory && matchesFavori && matchesSearch && matchesTime;
+    const matchesSeason = selectedSeason === 'tous' || (r.saison || 'toute_annee') === selectedSeason;
+    
+    return matchesCategory && matchesFavori && matchesSearch && matchesTime && matchesSeason;
   });
 
   const favorites = useMemo(() => recettes.filter(r => r.favori), [recettes]);
@@ -69,8 +72,20 @@ export function RecipesPage() {
     );
   };
 
+  const [formInitialShowIA, setFormInitialShowIA] = useState(false);
+  const [formInitialIAMode, setFormInitialIAMode] = useState<'text' | 'photo'>('photo');
+
+  const handleCreatePhotoIA = () => {
+    setEditingRecipe(null);
+    setFormInitialShowIA(true);
+    setFormInitialIAMode('photo');
+    setIsFormOpen(true);
+  };
+
   const handleCreate = () => {
     setEditingRecipe(null);
+    setFormInitialShowIA(false);
+    setFormInitialIAMode('photo');
     setIsFormOpen(true);
   };
 
@@ -100,61 +115,79 @@ export function RecipesPage() {
       exit={{ opacity: 0, y: -10 }}
       className="space-y-6"
     >
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">BROCOLI</h2>
-          <p className="text-sm text-slate-500">Gérez votre bibliothèque de saveurs</p>
+          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">BROCOLI</h2>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium">Gérez votre bibliothèque de saveurs</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button 
+            onClick={handleCreatePhotoIA}
+            className="flex-1 sm:flex-initial px-3 sm:px-3.5 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 font-semibold text-xs sm:text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+            title="Scanner une photo de recette ou un plat"
+          >
+            <Camera size={16} className="shrink-0" />
+            <span>Photo IA</span>
+          </button>
           <button 
             onClick={() => useStore.getState().syncWithSupabase()}
-            className="btn-secondary text-sm"
+            className="btn-secondary text-xs sm:text-sm hidden md:inline-flex"
           >
             Actualiser
           </button>
           <button 
             id="btn-new-recipe"
             onClick={handleCreate}
-            className="btn-primary text-sm shadow-sm"
+            className="flex-1 sm:flex-initial btn-primary text-xs sm:text-sm shadow-sm justify-center py-2 sm:py-2.5 active:scale-95"
           >
-            <Plus size={16} />
+            <Plus size={16} className="shrink-0" />
             <span>Nouvelle recette</span>
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-6 mb-8">
-        <div className="flex gap-4 items-center justify-between">
-          <div className="flex-1 relative max-w-2xl">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex gap-2.5 items-center justify-between">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text"
-              placeholder="Rechercher..."
+              placeholder="Rechercher une recette ou ingrédient..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 border-opacity-60 transition-all text-sm"
+              className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all text-xs sm:text-sm font-medium shadow-xs"
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button 
               onClick={() => setShowFilters(true)}
-              className="md:hidden p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all"
-              title="Filtres"
+              className={`md:hidden px-3 py-2 bg-white border rounded-xl transition-all shadow-xs flex items-center gap-1.5 text-xs font-bold ${
+                (selectedCategories.length > 0 || selectedSeason !== 'tous' || maxTime < 240)
+                  ? 'border-emerald-500 text-emerald-700 bg-emerald-50/60 ring-1 ring-emerald-500/20'
+                  : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+              title="Filtres avancés"
             >
-              <Filter size={18} />
+              <Filter size={15} className="text-emerald-600 shrink-0" />
+              <span>Filtres</span>
+              {(selectedCategories.length > 0 || selectedSeason !== 'tous' || maxTime < 240) && (
+                <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+              )}
             </button>
 
-            <div className="hidden md:flex bg-slate-200/50 p-1 rounded-lg">
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/60">
               <button 
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-50'}`}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow-xs text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-600'}`}
+                title="Vue grille"
               >
                 <LayoutGrid size={16} />
               </button>
               <button 
                 onClick={() => setViewMode('list')}
-                className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-50'}`}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-xs text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-600'}`}
+                title="Vue liste"
               >
                 <List size={16} />
               </button>
@@ -163,47 +196,73 @@ export function RecipesPage() {
         </div>
 
         {/* Desktop Filters */}
-        <div className="hidden md:flex flex-wrap gap-2 items-center">
-          <button
-            onClick={() => setSelectedCategories([])}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
-              selectedCategories.length === 0 
-              ? 'bg-slate-900 border-slate-900 text-white shadow-sm' 
-              : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
-            }`}
-          >
-            Tout
-          </button>
-          
-          <div className="h-4 w-px bg-slate-200 mx-2" />
-
-          {allCategories.map((cat) => (
+        <div className="hidden md:flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2 items-center">
             <button
-              key={cat}
-              onClick={() => toggleCategory(cat)}
-              className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border flex items-center gap-1.5 ${
-                selectedCategories.includes(cat)
-                ? (cat === 'Favoris' ? 'bg-rose-500 border-rose-500 text-white shadow-sm' : 'bg-emerald-600 border-emerald-600 text-white shadow-sm')
+              onClick={() => setSelectedCategories([])}
+              className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border ${
+                selectedCategories.length === 0 
+                ? 'bg-slate-900 border-slate-900 text-white shadow-sm' 
                 : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
               }`}
             >
-              {cat === 'Favoris' && <Heart size={12} fill={selectedCategories.includes(cat) ? "currentColor" : "none"} />}
-              {cat}
+              Tout
             </button>
-          ))}
-          <div className="flex items-center gap-3 ml-4 border-l pl-4 border-slate-200">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              {maxTime >= 240 ? 'Temps: Tout' : `Max ${maxTime} min`}
-            </label>
-            <input 
-              type="range" 
-              min="15" 
-              max="240" 
-              step="15"
-              value={maxTime}
-              onChange={(e) => setMaxTime(parseInt(e.target.value))}
-              className="w-32 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
-            />
+            
+            <div className="h-4 w-px bg-slate-200 mx-1" />
+
+            {allCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => toggleCategory(cat)}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all border flex items-center gap-1.5 ${
+                  selectedCategories.includes(cat)
+                  ? (cat === 'Favoris' ? 'bg-rose-500 border-rose-500 text-white shadow-sm' : 'bg-emerald-600 border-emerald-600 text-white shadow-sm')
+                  : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                {cat === 'Favoris' && <Heart size={12} fill={selectedCategories.includes(cat) ? "currentColor" : "none"} />}
+                {cat}
+              </button>
+            ))}
+            <div className="flex items-center gap-3 ml-auto border-l pl-4 border-slate-200">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                {maxTime >= 240 ? 'Temps: Tout' : `Max ${maxTime} min`}
+              </label>
+              <input 
+                type="range" 
+                min="15" 
+                max="240" 
+                step="15"
+                value={maxTime}
+                onChange={(e) => setMaxTime(parseInt(e.target.value))}
+                className="w-32 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+              />
+            </div>
+          </div>
+
+          {/* Saison Filter Sub-row */}
+          <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-2">Saison :</span>
+            {[
+              { id: 'tous', label: 'Toutes les saisons', icon: '✨' },
+              { id: 'ete', label: 'Été uniquement', icon: '☀️' },
+              { id: 'hiver', label: 'Hiver uniquement', icon: '❄️' },
+              { id: 'toute_annee', label: 'Toute l\'année', icon: '🌿' },
+            ].map(s => (
+              <button
+                key={s.id}
+                onClick={() => setSelectedSeason(s.id as any)}
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-all border flex items-center gap-1.5 ${
+                  selectedSeason === s.id
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold shadow-xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span>{s.icon}</span>
+                <span>{s.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -263,6 +322,30 @@ export function RecipesPage() {
                   </div>
 
                   <div className="space-y-4">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Saison</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: 'tous', label: 'Toutes les saisons', icon: '✨' },
+                        { id: 'ete', label: '☀️ Été', icon: '' },
+                        { id: 'hiver', label: '❄️ Hiver', icon: '' },
+                        { id: 'toute_annee', label: '🌿 Toute l\'année', icon: '' },
+                      ].map(s => (
+                        <button
+                          key={s.id}
+                          onClick={() => setSelectedSeason(s.id as any)}
+                          className={`p-3 text-xs font-bold rounded-xl border text-center transition-all ${
+                            selectedSeason === s.id
+                              ? 'bg-emerald-600 border-emerald-600 text-white'
+                              : 'bg-slate-50 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                         Temps max : {maxTime >= 240 ? 'Tout' : `${maxTime} min`}
@@ -311,7 +394,7 @@ export function RecipesPage() {
             <Heart size={20} fill="currentColor" />
             <h3 className="text-lg font-bold tracking-tight">Mes favoris</h3>
           </div>
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 landscape:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6' : 'space-y-3'}>
             {favorites.map((recette) => (
               <RecipeCard 
                 key={recette.id} 
@@ -326,7 +409,7 @@ export function RecipesPage() {
       )}
 
       {filteredRecettes.length > 0 ? (
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
+        <div className={viewMode === 'grid' ? 'grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 landscape:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6' : 'space-y-3'}>
           {filteredRecettes.map((recette) => (
             <RecipeCard 
               key={recette.id} 
@@ -364,6 +447,8 @@ export function RecipesPage() {
       {isFormOpen && (
         <RecipeFormModal 
           recette={editingRecipe}
+          initialShowIA={formInitialShowIA}
+          initialIAMode={formInitialIAMode}
           onClose={() => setIsFormOpen(false)}
           onSave={handleSave}
         />

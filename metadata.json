@@ -2,5 +2,5 @@
   "name": "BROCOLI - Receipt App",
   "description": "L'app ultime pour gérer vos recettes et votre planning de repas avec style et simplicité.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

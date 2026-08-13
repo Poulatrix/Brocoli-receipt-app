@@ -469,6 +469,12 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
                   <span className="text-slate-500 font-medium">Cuisson</span>
                   <span className="font-bold text-slate-900">{recette.cuissonMin} min</span>
                 </div>
+                <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                  <span className="text-slate-500 font-medium">Saison</span>
+                  <span className="font-bold text-slate-900 text-xs flex items-center gap-1">
+                    {recette.saison === 'ete' ? '☀️ Été' : recette.saison === 'hiver' ? '❄️ Hiver' : '🌿 Toute l\'année'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
