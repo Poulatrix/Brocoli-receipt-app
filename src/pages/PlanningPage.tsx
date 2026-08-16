@@ -1,7 +1,29 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Search, ChevronLeft, ChevronRight, Lightbulb, Trash2, Calendar as CalendarIcon, ShoppingCart, CheckCircle2, X } from 'lucide-react';
-import { format, addDays, startOfToday, isSameDay, parseISO } from 'date-fns';
+import { 
+  Plus, 
+  Search, 
+  ChevronLeft, 
+  ChevronRight, 
+  Lightbulb, 
+  Trash2, 
+  Calendar as CalendarIcon, 
+  ShoppingCart, 
+  CheckCircle2, 
+  X,
+  RotateCcw,
+  ArrowRightLeft
+} from 'lucide-react';
+import { 
+  format, 
+  addDays, 
+  startOfToday, 
+  isSameDay, 
+  parseISO, 
+  startOfWeek, 
+  isBefore, 
+  addWeeks 
+} from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useStore } from '../store';
 import { Recette, PlanningEntry } from '../types';
@@ -16,9 +38,26 @@ export function PlanningPage() {
   const [showShoppingTools, setShowShoppingTools] = useState(false);
   const [selectedForShopping, setSelectedForShopping] = useState<string[]>([]);
   const [draggedDate, setDraggedDate] = useState<string | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   const today = startOfToday();
-  const days = Array.from({ length: 14 }).map((_, i) => addDays(today, i));
+  
+  // Base Monday of the current week (anchored to Monday, moves only when next Monday is reached)
+  const baseMonday = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today]);
+  const activeMonday = useMemo(() => addWeeks(baseMonday, weekOffset), [baseMonday, weekOffset]);
+
+  // Week 1 (7 days: Monday to Sunday)
+  const week1Days = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => addDays(activeMonday, i));
+  }, [activeMonday]);
+
+  // Week 2 (7 days: Next Monday to Sunday)
+  const week2Days = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => addDays(activeMonday, 7 + i));
+  }, [activeMonday]);
+
+  // Total 14 days for planning & shopping
+  const days = useMemo(() => [...week1Days, ...week2Days], [week1Days, week2Days]);
 
   const filteredRecettes = recettes.filter(r => 
     r.nom.toLowerCase().includes(searchTerm.toLowerCase())
@@ -116,7 +155,6 @@ export function PlanningPage() {
     e.dataTransfer.setData('text/plain', date);
     e.dataTransfer.effectAllowed = 'move';
     
-    // Add a small delay to allow the drag image to be created before we change the opacity
     setTimeout(() => {
       if (e.target instanceof HTMLElement) {
         e.target.classList.add('opacity-40');
@@ -150,11 +188,151 @@ export function PlanningPage() {
     const targetRecetteId = targetEntry?.recetteId || null;
     const targetSuggest = targetEntry?.suggestionLibre || null;
 
-    // Use a single sequence of updates or handle them safely
     await setPlanningEntry(targetDate, sourceRecetteId, sourceSuggest);
     await setPlanningEntry(sourceDate, targetRecetteId, targetSuggest);
     
     setDraggedDate(null);
+  };
+
+  // Helper render for single day card
+  const renderDayCard = (day: Date) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const entry = planning.find(p => p.date === dateStr);
+    const recette = entry?.recetteId ? recettes.find(r => r.id === entry.recetteId) : null;
+    const isToday = isSameDay(day, today);
+    const isPast = isBefore(day, today) && !isToday;
+
+    return (
+      <div 
+        key={dateStr}
+        draggable={!!(recette || entry?.suggestionLibre)}
+        onDragStart={(e) => handleDragStart(e, dateStr)}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDrop={(e) => handleDrop(e, dateStr)}
+        onClick={() => {
+          if (selectedSuggest) {
+            handleAssignSuggestToDate(dateStr);
+          } else {
+            setIsAssigning({ date: dateStr });
+          }
+        }}
+        className={`relative group rounded-2xl p-4 sm:p-5 min-h-[160px] md:min-h-[175px] shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between border ${
+          isToday 
+            ? 'bg-white border-emerald-500 ring-2 ring-emerald-500/20' 
+            : isPast
+              ? 'bg-slate-50/70 border-slate-200/90 hover:border-emerald-300'
+              : 'bg-white border-slate-200 hover:border-emerald-300'
+        } ${selectedSuggest ? 'ring-2 ring-emerald-500 ring-offset-2 animate-pulse' : ''} ${
+          draggedDate === dateStr ? 'bg-slate-100/80 border-dashed border-emerald-400 opacity-60' : ''
+        }`}
+      >
+        {/* Top Header */}
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[11px] font-bold uppercase tracking-wider ${
+              isToday ? 'text-emerald-700 font-extrabold' : isPast ? 'text-slate-500' : 'text-slate-500'
+            }`}>
+              {format(day, 'EEEE', { locale: fr })}
+            </span>
+            {isPast && (
+              <span className="text-[9px] font-semibold text-slate-400 bg-slate-200/60 px-1.5 py-0.2 rounded">
+                Passé
+              </span>
+            )}
+          </div>
+
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+            isToday 
+              ? 'bg-emerald-600 text-white font-extrabold shadow-xs' 
+              : 'text-slate-700 bg-slate-100'
+          }`}>
+            {format(day, 'd MMM', { locale: fr })}
+          </span>
+        </div>
+
+        {/* Content */}
+        {recette ? (
+          <div className="space-y-2 flex-1 flex flex-col justify-between">
+            <div className="relative w-full h-20 sm:h-22 rounded-xl overflow-hidden border border-slate-100 shadow-2xs group/img">
+              <img 
+                src={recette.image || `https://picsum.photos/seed/${recette.id}/300/200`} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                alt=""
+                referrerPolicy="no-referrer"
+              />
+              
+              {/* Quick remove button */}
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPlanningEntry(dateStr, null, null);
+                }}
+                className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Retirer le repas"
+              >
+                <Trash2 size={12} />
+              </button>
+
+              <div className="absolute bottom-1 left-1 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded text-[9px] font-semibold text-white uppercase tracking-wider">
+                {recette.categorie}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                {recette.nom}
+              </p>
+            </div>
+          </div>
+        ) : entry?.suggestionLibre ? (
+          <div className="space-y-2 flex-1 flex flex-col justify-between">
+            <div className="relative w-full h-20 sm:h-22 rounded-xl overflow-hidden border border-slate-100 shadow-2xs bg-slate-100">
+              <img 
+                src={`https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80`} 
+                className="w-full h-full object-cover opacity-85" 
+                alt=""
+                referrerPolicy="no-referrer"
+              />
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPlanningEntry(dateStr, null, null);
+                }}
+                className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Retirer l'idée"
+              >
+                <Trash2 size={12} />
+              </button>
+              <div className="absolute bottom-1 left-1 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded text-[9px] font-semibold text-white uppercase tracking-wider">
+                Idée libre
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800 leading-tight line-clamp-2">
+                {entry.suggestionLibre}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center flex-1 py-3 text-slate-400 hover:text-emerald-600 transition-colors">
+            <div className="w-8 h-8 rounded-full border border-dashed border-slate-300 flex items-center justify-center mb-1 group-hover:border-emerald-500 group-hover:bg-emerald-50 transition-all">
+              <Plus size={16} />
+            </div>
+            <span className="text-[10px] font-semibold">Ajouter</span>
+          </div>
+        )}
+
+        {/* Drag Hint on card hover */}
+        {(recette || entry?.suggestionLibre) && (
+          <div className="mt-2 pt-1 border-t border-slate-100/80 flex items-center justify-between text-[9px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="flex items-center gap-1">
+              <ArrowRightLeft size={10} /> Glisser pour intervertir
+            </span>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -164,100 +342,96 @@ export function PlanningPage() {
       exit={{ opacity: 0, y: -10 }}
       className="space-y-8"
     >
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Planning Repas</h2>
-          <p className="text-sm text-slate-500">Planifiez vos 14 prochains jours de cuisine</p>
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 font-serif">Planning Repas</h2>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+            Semaine figée du lundi au dimanche • Glissez-déposez un plat pour l'intervertir à tout moment
+          </p>
         </div>
-        <div className="flex gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Week Navigation Controls */}
+          <div className="inline-flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-2xs">
+            <button 
+              onClick={() => setWeekOffset(prev => prev - 1)}
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors"
+              title="Semaine précédente"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {weekOffset !== 0 && (
+              <button 
+                onClick={() => setWeekOffset(0)}
+                className="px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors flex items-center gap-1 mx-1"
+                title="Revenir à la semaine en cours"
+              >
+                <RotateCcw size={12} />
+                <span>Cette semaine</span>
+              </button>
+            )}
+
+            <button 
+              onClick={() => setWeekOffset(prev => prev + 1)}
+              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors"
+              title="Semaine suivante"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
           {planningDays.length > 0 && (
             <button 
               onClick={() => {
                 setShowShoppingTools(true);
                 setSelectedForShopping(planningDays.map(p => p.dateStr));
               }}
-              className="btn-primary"
+              className="btn-primary py-2 px-3 sm:px-4 text-xs font-bold"
             >
-              <ShoppingCart size={18} />
-              <span>Générer ma liste</span>
+              <ShoppingCart size={16} />
+              <span>Générer ma liste ({planningDays.length})</span>
             </button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-6">
-        {days.map((day) => {
-          const dateStr = format(day, 'yyyy-MM-dd');
-          const entry = planning.find(p => p.date === dateStr);
-          const recette = entry?.recetteId ? recettes.find(r => r.id === entry.recetteId) : null;
-          const isToday = isSameDay(day, today);
+      {/* SEMAINE 1 */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between pb-1 border-b border-slate-200/80">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+              {weekOffset === 0 ? "Semaine en cours" : `Semaine du ${format(week1Days[0], 'd MMMM', { locale: fr })}`}
+            </h3>
+            <span className="text-xs text-slate-400 font-medium">
+              (du {format(week1Days[0], 'd MMM', { locale: fr })} au {format(week1Days[6], 'd MMM', { locale: fr })})
+            </span>
+          </div>
+        </div>
 
-          return (
-            <div 
-              key={dateStr}
-              draggable={!!(recette || entry?.suggestionLibre)}
-              onDragStart={(e) => handleDragStart(e, dateStr)}
-              onDragEnd={handleDragEnd}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, dateStr)}
-              onClick={() => {
-                if (selectedSuggest) {
-                  handleAssignSuggestToDate(dateStr);
-                } else {
-                  setIsAssigning({ date: dateStr });
-                }
-              }}
-              className={`relative group bg-white border rounded-2xl p-6 min-h-[160px] md:min-h-[180px] shadow-sm hover:shadow-md transition-all cursor-pointer ${
-                isToday ? 'border-emerald-600 ring-1 ring-emerald-600/10' : 'border-slate-200 hover:border-emerald-300'
-              } ${selectedSuggest ? 'ring-2 ring-emerald-500 ring-offset-2 animate-pulse' : ''} ${draggedDate === dateStr ? 'bg-slate-50/50 border-dashed border-emerald-400' : ''}`}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <span className={`text-[11px] md:text-xs font-bold uppercase tracking-widest ${isToday ? 'text-emerald-600' : 'text-slate-400'}`}>
-                  {format(day, 'EEEE', { locale: fr }).replace('.', '')}
-                </span>
-                <span className={`text-sm font-bold ${isToday ? 'bg-emerald-600 text-white w-6 h-6 rounded-full flex items-center justify-center' : 'text-slate-900'}`}>
-                  {format(day, 'd')}
-                </span>
-              </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+          {week1Days.map(day => renderDayCard(day))}
+        </div>
+      </div>
 
-              {recette ? (
-                <div className="space-y-3">
-                  <div className="relative w-full h-16 md:h-20 rounded-xl overflow-hidden border border-slate-100 shadow-sm transition-transform group-hover:scale-[1.02]">
-                    <img 
-                      src={recette.image || `https://picsum.photos/seed/${recette.id}/200/200`} 
-                      className="w-full h-full object-cover" 
-                      alt=""
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  <p className="text-[11px] md:text-xs font-bold text-slate-800 leading-tight line-clamp-2 uppercase tracking-tight">
-                    {recette.nom}
-                  </p>
-                </div>
-              ) : entry?.suggestionLibre ? (
-                <div className="space-y-3">
-                   <div className="relative w-full h-16 md:h-20 rounded-xl overflow-hidden border border-slate-100 shadow-sm bg-slate-50 transition-transform group-hover:scale-[1.02]">
-                    <img 
-                      src={`https://loremflickr.com/200/200/food,${encodeURIComponent(entry.suggestionLibre.split(' ')[0])}?lock=${entry.date.length}`} 
-                      className="w-full h-full object-cover opacity-80" 
-                      alt=""
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  <div className="text-[10px] md:text-[11px] font-bold text-slate-600 leading-tight uppercase line-clamp-2 tracking-tight">
-                    {entry.suggestionLibre}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center h-full pt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                    <Plus size={20} />
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {/* SEMAINE 2 */}
+      <div className="space-y-3 pt-4">
+        <div className="flex items-center justify-between pb-1 border-b border-slate-200/80">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+              {weekOffset === 0 ? "Semaine suivante" : `Semaine du ${format(week2Days[0], 'd MMMM', { locale: fr })}`}
+            </h3>
+            <span className="text-xs text-slate-400 font-medium">
+              (du {format(week2Days[0], 'd MMM', { locale: fr })} au {format(week2Days[6], 'd MMM', { locale: fr })})
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+          {week2Days.map(day => renderDayCard(day))}
+        </div>
       </div>
 
       {selectedSuggest && (

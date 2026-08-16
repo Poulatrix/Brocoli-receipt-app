@@ -24,7 +24,7 @@ import {
   Utensils,
   BookOpen
 } from 'lucide-react';
-import { format, addDays, startOfToday } from 'date-fns';
+import { format, addDays, startOfToday, startOfWeek, isSameDay, isBefore } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useStore } from '../store';
 import { Recette, PlanningEntry } from '../types';
@@ -206,16 +206,27 @@ export function HomePage({ onNavigate }: HomePageProps) {
   const todayMeal = getMealForDate(todayISO);
   const tomorrowMeal = getMealForDate(tomorrowISO);
 
-  // Next 7 days timeline
+  // Current week timeline (Anchored on Monday, fixed from Monday to Sunday)
+  const currentMonday = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today]);
+
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }).map((_, i) => {
-      const d = addDays(today, i);
+      const d = addDays(currentMonday, i);
       const iso = format(d, 'yyyy-MM-dd');
       const label = format(d, 'EEE d', { locale: fr }).toUpperCase();
       const meal = getMealForDate(iso);
-      return { date: d, iso, label, meal, isToday: i === 0 };
+      const isCurrentDay = isSameDay(d, today);
+      const isPastDay = isBefore(d, today) && !isCurrentDay;
+      return { 
+        date: d, 
+        iso, 
+        label, 
+        meal, 
+        isToday: isCurrentDay, 
+        isPast: isPastDay 
+      };
     });
-  }, [today, planning, recettes]);
+  }, [currentMonday, today, planning, recettes]);
 
   // Existing suggestions stored in planning (starting with 1900-)
   const savedSuggestions = useMemo(() => {
@@ -866,9 +877,18 @@ export function HomePage({ onNavigate }: HomePageProps) {
               }`}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className={`text-[11px] font-bold uppercase ${item.isToday ? 'text-emerald-700' : 'text-slate-500'}`}>
-                  {item.label}
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className={`text-[11px] font-bold uppercase ${
+                    item.isToday ? 'text-emerald-700 font-extrabold' : item.isPast ? 'text-slate-400' : 'text-slate-500'
+                  }`}>
+                    {item.label}
+                  </span>
+                  {item.isPast && (
+                    <span className="text-[8px] bg-slate-200/60 text-slate-500 font-semibold px-1 py-0.2 rounded">
+                      Passé
+                    </span>
+                  )}
+                </div>
                 {item.isToday && (
                   <span className="text-[9px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.2 rounded-full uppercase">
                     Auj.
