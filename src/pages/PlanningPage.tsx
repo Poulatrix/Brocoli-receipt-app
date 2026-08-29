@@ -46,18 +46,23 @@ export function PlanningPage() {
   const baseMonday = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today]);
   const activeMonday = useMemo(() => addWeeks(baseMonday, weekOffset), [baseMonday, weekOffset]);
 
-  // Week 1 (7 days: Monday to Sunday)
+  // Week 1 (7 days: Monday to Sunday - Current Week)
   const week1Days = useMemo(() => {
     return Array.from({ length: 7 }).map((_, i) => addDays(activeMonday, i));
   }, [activeMonday]);
 
-  // Week 2 (7 days: Next Monday to Sunday)
+  // Week 2 (7 days: Next Monday to Sunday - 1st Forecast Week)
   const week2Days = useMemo(() => {
     return Array.from({ length: 7 }).map((_, i) => addDays(activeMonday, 7 + i));
   }, [activeMonday]);
 
-  // Total 14 days for planning & shopping
-  const days = useMemo(() => [...week1Days, ...week2Days], [week1Days, week2Days]);
+  // Week 3 (7 days: 2nd Forecast Week)
+  const week3Days = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => addDays(activeMonday, 14 + i));
+  }, [activeMonday]);
+
+  // Total 21 days for planning & shopping
+  const days = useMemo(() => [...week1Days, ...week2Days, ...week3Days], [week1Days, week2Days, week3Days]);
 
   const filteredRecettes = recettes.filter(r => 
     r.nom.toLowerCase().includes(searchTerm.toLowerCase())
@@ -221,7 +226,7 @@ export function PlanningPage() {
           isToday 
             ? 'bg-white border-emerald-500 ring-2 ring-emerald-500/20' 
             : isPast
-              ? 'bg-slate-50/70 border-slate-200/90 hover:border-emerald-300'
+              ? 'bg-rose-50/40 border-rose-300/70 hover:border-rose-400 opacity-80 hover:opacity-100'
               : 'bg-white border-slate-200 hover:border-emerald-300'
         } ${selectedSuggest ? 'ring-2 ring-emerald-500 ring-offset-2 animate-pulse' : ''} ${
           draggedDate === dateStr ? 'bg-slate-100/80 border-dashed border-emerald-400 opacity-60' : ''
@@ -231,12 +236,12 @@ export function PlanningPage() {
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-1.5">
             <span className={`text-[11px] font-bold uppercase tracking-wider ${
-              isToday ? 'text-emerald-700 font-extrabold' : isPast ? 'text-slate-500' : 'text-slate-500'
+              isToday ? 'text-emerald-700 font-extrabold' : isPast ? 'text-rose-900/70 font-bold' : 'text-slate-500'
             }`}>
               {format(day, 'EEEE', { locale: fr })}
             </span>
             {isPast && (
-              <span className="text-[9px] font-semibold text-slate-400 bg-slate-200/60 px-1.5 py-0.2 rounded">
+              <span className="text-[9px] font-bold text-rose-700 bg-rose-100 border border-rose-200/80 px-1.5 py-0.2 rounded">
                 Passé
               </span>
             )}
@@ -245,7 +250,9 @@ export function PlanningPage() {
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
             isToday 
               ? 'bg-emerald-600 text-white font-extrabold shadow-xs' 
-              : 'text-slate-700 bg-slate-100'
+              : isPast
+                ? 'text-rose-800 bg-rose-100/70 border border-rose-200/60 font-semibold'
+                : 'text-slate-700 bg-slate-100'
           }`}>
             {format(day, 'd MMM', { locale: fr })}
           </span>
@@ -257,7 +264,9 @@ export function PlanningPage() {
             <div className="relative w-full h-20 sm:h-22 rounded-xl overflow-hidden border border-slate-100 shadow-2xs group/img">
               <img 
                 src={recette.image || `https://picsum.photos/seed/${recette.id}/300/200`} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
+                  isPast ? 'grayscale-[35%] opacity-85 group-hover:grayscale-0 group-hover:opacity-100' : ''
+                }`}
                 alt=""
                 referrerPolicy="no-referrer"
               />
@@ -280,7 +289,9 @@ export function PlanningPage() {
             </div>
 
             <div>
-              <p className="text-xs font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-emerald-700 transition-colors">
+              <p className={`text-xs font-bold leading-tight line-clamp-2 transition-colors ${
+                isPast ? 'text-slate-700 group-hover:text-rose-800' : 'text-slate-900 group-hover:text-emerald-700'
+              }`}>
                 {recette.nom}
               </p>
             </div>
@@ -290,7 +301,9 @@ export function PlanningPage() {
             <div className="relative w-full h-20 sm:h-22 rounded-xl overflow-hidden border border-slate-100 shadow-2xs bg-slate-100">
               <img 
                 src={`https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80`} 
-                className="w-full h-full object-cover opacity-85" 
+                className={`w-full h-full object-cover opacity-85 ${
+                  isPast ? 'grayscale-[35%] group-hover:grayscale-0' : ''
+                }`}
                 alt=""
                 referrerPolicy="no-referrer"
               />
@@ -309,14 +322,22 @@ export function PlanningPage() {
               </div>
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-800 leading-tight line-clamp-2">
+              <p className={`text-xs font-bold leading-tight line-clamp-2 ${
+                isPast ? 'text-slate-700' : 'text-slate-800'
+              }`}>
                 {entry.suggestionLibre}
               </p>
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center flex-1 py-3 text-slate-400 hover:text-emerald-600 transition-colors">
-            <div className="w-8 h-8 rounded-full border border-dashed border-slate-300 flex items-center justify-center mb-1 group-hover:border-emerald-500 group-hover:bg-emerald-50 transition-all">
+          <div className={`flex flex-col items-center justify-center flex-1 py-3 transition-colors ${
+            isPast ? 'text-rose-400/80 hover:text-rose-600' : 'text-slate-400 hover:text-emerald-600'
+          }`}>
+            <div className={`w-8 h-8 rounded-full border border-dashed flex items-center justify-center mb-1 transition-all ${
+              isPast 
+                ? 'border-rose-200 group-hover:border-rose-400 group-hover:bg-rose-100/50' 
+                : 'border-slate-300 group-hover:border-emerald-500 group-hover:bg-emerald-50'
+            }`}>
               <Plus size={16} />
             </div>
             <span className="text-[10px] font-semibold">Ajouter</span>
@@ -325,7 +346,9 @@ export function PlanningPage() {
 
         {/* Drag Hint on card hover */}
         {(recette || entry?.suggestionLibre) && (
-          <div className="mt-2 pt-1 border-t border-slate-100/80 flex items-center justify-between text-[9px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className={`mt-2 pt-1 border-t flex items-center justify-between text-[9px] opacity-0 group-hover:opacity-100 transition-opacity ${
+            isPast ? 'border-rose-200/60 text-rose-400' : 'border-slate-100/80 text-slate-400'
+          }`}>
             <span className="flex items-center gap-1">
               <ArrowRightLeft size={10} /> Glisser pour intervertir
             </span>
@@ -415,13 +438,13 @@ export function PlanningPage() {
         </div>
       </div>
 
-      {/* SEMAINE 2 */}
+      {/* SEMAINE 2 — 1ère prévision */}
       <div className="space-y-3 pt-4">
         <div className="flex items-center justify-between pb-1 border-b border-slate-200/80">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">
-              {weekOffset === 0 ? "Semaine suivante" : `Semaine du ${format(week2Days[0], 'd MMMM', { locale: fr })}`}
+              {weekOffset === 0 ? "Semaine suivante (+1 sem.)" : `Semaine du ${format(week2Days[0], 'd MMMM', { locale: fr })}`}
             </h3>
             <span className="text-xs text-slate-400 font-medium">
               (du {format(week2Days[0], 'd MMM', { locale: fr })} au {format(week2Days[6], 'd MMM', { locale: fr })})
@@ -431,6 +454,25 @@ export function PlanningPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
           {week2Days.map(day => renderDayCard(day))}
+        </div>
+      </div>
+
+      {/* SEMAINE 3 — 2e semaine de prévision */}
+      <div className="space-y-3 pt-4">
+        <div className="flex items-center justify-between pb-1 border-b border-slate-200/80">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+              {weekOffset === 0 ? "2e semaine de prévision (+2 sem.)" : `Semaine du ${format(week3Days[0], 'd MMMM', { locale: fr })}`}
+            </h3>
+            <span className="text-xs text-slate-400 font-medium">
+              (du {format(week3Days[0], 'd MMM', { locale: fr })} au {format(week3Days[6], 'd MMM', { locale: fr })})
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+          {week3Days.map(day => renderDayCard(day))}
         </div>
       </div>
 

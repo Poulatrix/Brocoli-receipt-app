@@ -24,7 +24,7 @@ import {
   Utensils,
   BookOpen
 } from 'lucide-react';
-import { format, addDays, startOfToday, startOfWeek, isSameDay, isBefore } from 'date-fns';
+import { format, addDays, startOfToday, startOfWeek, isSameDay, isBefore, addWeeks } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useStore } from '../store';
 import { Recette, PlanningEntry } from '../types';
@@ -153,6 +153,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
   const today = startOfToday();
   const todayISO = format(today, 'yyyy-MM-dd');
   const tomorrowISO = format(addDays(today, 1), 'yyyy-MM-dd');
+  const [previewWeekIndex, setPreviewWeekIndex] = useState(0); // 0: Semaine en cours, 1: Semaine +1, 2: 2e prévision (+2)
   
   // Astuce du jour basée sur la date
   const tipOfTheDay = useMemo(() => {
@@ -208,10 +209,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
   // Current week timeline (Anchored on Monday, fixed from Monday to Sunday)
   const currentMonday = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today]);
+  const activeWeekMonday = useMemo(() => addWeeks(currentMonday, previewWeekIndex), [currentMonday, previewWeekIndex]);
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }).map((_, i) => {
-      const d = addDays(currentMonday, i);
+      const d = addDays(activeWeekMonday, i);
       const iso = format(d, 'yyyy-MM-dd');
       const label = format(d, 'EEE d', { locale: fr }).toUpperCase();
       const meal = getMealForDate(iso);
@@ -226,7 +228,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
         isPast: isPastDay 
       };
     });
-  }, [currentMonday, today, planning, recettes]);
+  }, [activeWeekMonday, today, planning, recettes]);
 
   // Existing suggestions stored in planning (starting with 1900-)
   const savedSuggestions = useMemo(() => {
@@ -845,22 +847,56 @@ export function HomePage({ onNavigate }: HomePageProps) {
       </section>
 
       {/* --------------------------------------------------
-          APERÇU — VOTRE SEMAINE
+          APERÇU — VOTRE SEMAINE & PRÉVISIONS
          -------------------------------------------------- */}
       <section className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-xs hover:shadow-md transition-shadow space-y-4 sm:space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <CalendarIcon size={18} className="text-emerald-600" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-              VOTRE SEMAINE
+              VOTRE SEMAINE & PRÉVISIONS
             </h3>
+          </div>
+
+          {/* Week selection tabs */}
+          <div className="flex items-center gap-1.5 bg-slate-100/90 p-1 rounded-xl self-start sm:self-auto text-xs">
+            <button
+              onClick={() => setPreviewWeekIndex(0)}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                previewWeekIndex === 0 
+                  ? 'bg-white text-emerald-800 shadow-2xs' 
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              En cours
+            </button>
+            <button
+              onClick={() => setPreviewWeekIndex(1)}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                previewWeekIndex === 1 
+                  ? 'bg-white text-emerald-800 shadow-2xs' 
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semaine +1
+            </button>
+            <button
+              onClick={() => setPreviewWeekIndex(2)}
+              className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                previewWeekIndex === 2 
+                  ? 'bg-white text-emerald-800 shadow-2xs' 
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              2e prévision (+2)
+            </button>
           </div>
 
           <button 
             onClick={() => onNavigate('planning')}
-            className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
+            className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 self-end sm:self-auto"
           >
-            <span>Voir le planning complet</span>
+            <span>Planning complet</span>
             <ChevronRight size={14} />
           </button>
         </div>
@@ -873,18 +909,20 @@ export function HomePage({ onNavigate }: HomePageProps) {
               className={`rounded-xl p-3 border flex flex-col justify-between transition-all ${
                 item.isToday 
                   ? 'bg-emerald-50/40 border-emerald-500/80 ring-1 ring-emerald-500/30' 
-                  : 'bg-white border-slate-200/80 hover:border-slate-300'
+                  : item.isPast
+                    ? 'bg-rose-50/40 border-rose-300/70 hover:border-rose-400 opacity-85 hover:opacity-100'
+                    : 'bg-white border-slate-200/80 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1">
                   <span className={`text-[11px] font-bold uppercase ${
-                    item.isToday ? 'text-emerald-700 font-extrabold' : item.isPast ? 'text-slate-400' : 'text-slate-500'
+                    item.isToday ? 'text-emerald-700 font-extrabold' : item.isPast ? 'text-rose-900/70 font-bold' : 'text-slate-500'
                   }`}>
                     {item.label}
                   </span>
                   {item.isPast && (
-                    <span className="text-[8px] bg-slate-200/60 text-slate-500 font-semibold px-1 py-0.2 rounded">
+                    <span className="text-[8px] bg-rose-100 text-rose-700 font-bold border border-rose-200/80 px-1 py-0.2 rounded">
                       Passé
                     </span>
                   )}
@@ -908,7 +946,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     <img 
                       src={item.meal.image} 
                       alt={item.meal.nom} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform ${
+                        item.isPast ? 'grayscale-[35%] opacity-85 group-hover:grayscale-0 group-hover:opacity-100' : ''
+                      }`}
                     />
                     <button 
                       onClick={(e) => {
@@ -925,7 +965,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     <span className="text-[9px] font-bold uppercase text-emerald-600 block line-clamp-1">
                       {item.meal.categorie}
                     </span>
-                    <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight group-hover:text-emerald-700 transition-colors">
+                    <h4 className={`text-xs font-bold line-clamp-2 leading-tight transition-colors ${
+                      item.isPast ? 'text-slate-700 group-hover:text-rose-800' : 'text-slate-900 group-hover:text-emerald-700'
+                    }`}>
                       {item.meal.nom}
                     </h4>
                   </div>
@@ -933,7 +975,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
               ) : (
                 <div 
                   onClick={() => setAssigningDate(item.iso)}
-                  className="h-28 border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-lg flex flex-col items-center justify-center p-2 text-center cursor-pointer text-slate-400 hover:text-emerald-600 transition-all bg-slate-50/50"
+                  className={`h-28 border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-2 text-center cursor-pointer transition-all ${
+                    item.isPast
+                      ? 'border-rose-200 text-rose-400 hover:border-rose-400 hover:text-rose-600 bg-rose-50/30'
+                      : 'border-slate-200 hover:border-emerald-500 text-slate-400 hover:text-emerald-600 bg-slate-50/50'
+                  }`}
                 >
                   <Plus size={18} className="mb-1" />
                   <span className="text-[10px] font-semibold leading-tight">
