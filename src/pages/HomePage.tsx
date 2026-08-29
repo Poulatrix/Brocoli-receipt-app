@@ -301,17 +301,30 @@ export function HomePage({ onNavigate }: HomePageProps) {
   const remainingCourses = totalCourses - boughtCourses;
 
   return (
-    <div className="max-w-[1280px] mx-auto px-3.5 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 pb-16 sm:pb-24">
+    <div className="relative max-w-[1280px] mx-auto px-3.5 sm:px-6 lg:px-8 space-y-6 sm:space-y-8 pb-16 sm:pb-24">
       
+      {/* --------------------------------------------------
+          AMBIENT BACKGROUND DEPTH & WARMTH ORBS
+         -------------------------------------------------- */}
+      <div className="pointer-events-none absolute -top-20 -left-20 w-80 sm:w-96 h-80 sm:h-96 bg-emerald-500/10 rounded-full blur-3xl -z-10" />
+      <div className="pointer-events-none absolute top-32 -right-24 w-80 sm:w-[28rem] h-80 sm:h-[28rem] bg-amber-400/10 rounded-full blur-3xl -z-10" />
+      <div className="pointer-events-none absolute top-1/2 left-1/3 -translate-x-1/2 w-96 sm:w-[32rem] h-96 sm:h-[32rem] bg-orange-300/8 rounded-full blur-3xl -z-10" />
+      <div className="pointer-events-none absolute -bottom-10 right-10 w-80 sm:w-96 h-80 sm:h-96 bg-emerald-600/8 rounded-full blur-3xl -z-10" />
+
       {/* --------------------------------------------------
           HEADER
          -------------------------------------------------- */}
-      <header className="flex items-center justify-between pt-1 sm:pt-2 pb-2 sm:pb-4">
+      <header className="flex items-center justify-between pt-1 sm:pt-2 pb-2 sm:pb-4 border-b border-stone-200/60">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight font-serif">
-            BROCOLI
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-900 tracking-tight font-serif">
+              BROCOLI
+            </h1>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-300/80 px-2 py-0.5 rounded-full shadow-2xs">
+              Healthy & Homemade
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-stone-600 font-medium mt-1">
             Bonjour, que cuisine-t-on aujourd'hui ?
           </p>
         </div>
@@ -319,7 +332,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
         <div className="flex items-center gap-2 sm:gap-3 relative">
           <button 
             onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 sm:p-2.5 rounded-full bg-white border border-slate-200/80 text-slate-700 hover:text-emerald-600 hover:border-emerald-200 transition-all shadow-xs relative group"
+            className="p-2 sm:p-2.5 rounded-full bg-white/90 backdrop-blur-xs border border-stone-200/90 text-stone-700 hover:text-emerald-700 hover:border-emerald-300 transition-all shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] relative group active:scale-95"
             title="Notifications"
           >
             <Bell size={18} />
@@ -328,7 +341,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
           <button 
             onClick={() => onNavigate('settings')}
-            className="p-2 sm:p-2.5 rounded-full bg-white border border-slate-200/80 text-slate-700 hover:text-emerald-600 hover:border-emerald-200 transition-all shadow-xs"
+            className="p-2 sm:p-2.5 rounded-full bg-white/90 backdrop-blur-xs border border-stone-200/90 text-stone-700 hover:text-emerald-700 hover:border-emerald-300 transition-all shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] active:scale-95"
             title="Paramètres"
           >
             <Settings size={18} />
@@ -341,23 +354,23 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 initial={{ opacity: 0, y: 10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute right-0 top-12 z-50 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-slate-200/80 p-4 space-y-3"
+                className="absolute right-0 top-12 z-50 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-stone-200/90 p-4 space-y-3"
               >
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-900">Notifications</h4>
-                  <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600">
+                <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">Notifications</h4>
+                  <button onClick={() => setShowNotifications(false)} className="text-stone-400 hover:text-stone-600">
                     <X size={14} />
                   </button>
                 </div>
                 <div className="space-y-2">
-                  <div className="p-2.5 bg-emerald-50/60 rounded-xl border border-emerald-100 text-xs">
+                  <div className="p-2.5 bg-emerald-50/70 rounded-xl border border-emerald-200/80 text-xs">
                     <p className="font-bold text-emerald-950">💡 Repas de ce soir</p>
                     <p className="text-emerald-800 text-[11px] mt-0.5">
                       {todayMeal ? `Prévu : ${todayMeal.nom}` : "Aucun repas planifié pour ce soir. N'hésitez pas à en choisir un !"}
                     </p>
                   </div>
-                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600">
-                    <p className="font-bold text-slate-800">🛒 Liste de courses</p>
+                  <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200/80 text-xs text-stone-700">
+                    <p className="font-bold text-stone-800">🛒 Liste de courses</p>
                     <p className="text-[11px] mt-0.5">Vous avez {remainingCourses} article(s) restant(s) à acheter.</p>
                   </div>
                 </div>
@@ -373,13 +386,13 @@ export function HomePage({ onNavigate }: HomePageProps) {
       <section className="grid grid-cols-1 landscape:grid-cols-2 md:grid-cols-12 gap-3 sm:gap-6">
         
         {/* BENTO 1 — AUJOURD'HUI (Dominant: 7 cols on md/lg) */}
-        <div className="landscape:col-span-1 md:col-span-7 bg-white border border-slate-200/80 rounded-2xl p-3 sm:p-5 lg:p-6 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between">
+        <div className="landscape:col-span-1 md:col-span-7 bg-white/95 backdrop-blur-xs border border-stone-200/90 rounded-2xl p-3 sm:p-5 lg:p-6 shadow-[0_4px_20px_-4px_rgba(40,30,20,0.06),0_2px_6px_-2px_rgba(40,30,20,0.03)] hover:shadow-[0_8px_30px_-6px_rgba(40,30,20,0.10)] transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2 sm:mb-4">
-              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-emerald-600">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
                 AUJOURD'HUI
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-slate-400 capitalize">
+              <span className="text-[10px] sm:text-xs font-semibold text-stone-500 capitalize">
                 {format(today, 'EEEE d MMMM', { locale: fr })}
               </span>
             </div>
@@ -499,13 +512,13 @@ export function HomePage({ onNavigate }: HomePageProps) {
         </div>
 
         {/* BENTO 2 — DEMAIN (Compact: 5 cols on md/lg) */}
-        <div className="landscape:col-span-1 md:col-span-5 bg-white border border-slate-200/80 rounded-2xl p-3 sm:p-5 lg:p-6 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between">
+        <div className="landscape:col-span-1 md:col-span-5 bg-white/95 backdrop-blur-xs border border-stone-200/90 rounded-2xl p-3 sm:p-5 lg:p-6 shadow-[0_4px_20px_-4px_rgba(40,30,20,0.06),0_2px_6px_-2px_rgba(40,30,20,0.03)] hover:shadow-[0_8px_30px_-6px_rgba(40,30,20,0.10)] transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2 sm:mb-4">
-              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-emerald-600">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
                 DEMAIN
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-slate-400 capitalize">
+              <span className="text-[10px] sm:text-xs font-semibold text-stone-500 capitalize">
                 {format(addDays(today, 1), 'EEEE d MMMM', { locale: fr })}
               </span>
             </div>
@@ -547,14 +560,14 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 </div>
 
                 <div className="flex items-center justify-between pt-0.5">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-stone-600">
                     {tomorrowMeal.prepMin !== null ? (
-                      <span className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs">
+                      <span className="flex items-center gap-1 bg-stone-100 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-medium border border-stone-200/60">
                         <Clock size={12} className="text-emerald-600" />
                         {tomorrowMeal.prepMin + tomorrowMeal.cuissonMin} min
                       </span>
                     ) : (
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg">
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60">
                         Saisie manuelle
                       </span>
                     )}
@@ -563,7 +576,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   {tomorrowMeal.recipe ? (
                     <button 
                       onClick={() => setSelectedRecipe(tomorrowMeal.recipe)}
-                      className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl transition-all flex items-center gap-1.5"
+                      className="bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
                     >
                       <span>Voir la recette</span>
                       <ChevronRight size={13} />
@@ -571,7 +584,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   ) : (
                     <button 
                       onClick={() => setAssigningDate(tomorrowISO)}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl transition-all"
+                      className="bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl transition-all"
                     >
                       Modifier
                     </button>
@@ -579,8 +592,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 </div>
               </div>
             ) : (
-              <div className="py-5 sm:py-8 text-center space-y-2 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                <p className="text-xs font-semibold text-slate-500">
+              <div className="py-5 sm:py-8 text-center space-y-2 border-2 border-dashed border-stone-200 rounded-xl bg-stone-50/60">
+                <p className="text-xs font-semibold text-stone-500">
                   Pas de plat prévu pour demain
                 </p>
                 <button 
@@ -603,21 +616,21 @@ export function HomePage({ onNavigate }: HomePageProps) {
       <section className="grid grid-cols-1 landscape:grid-cols-2 md:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-6">
         
         {/* BENTO 3A — UNE IDÉE POUR CE SOIR / PROPOSITIONS (6 cols on md, 4 on lg) */}
-        <div className="landscape:col-span-1 md:col-span-1 lg:col-span-4 bg-white border border-slate-200/80 rounded-2xl p-3 sm:p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between space-y-3 sm:space-y-4">
+        <div className="landscape:col-span-1 md:col-span-1 lg:col-span-4 bg-white/95 backdrop-blur-xs border border-stone-200/90 rounded-2xl p-3 sm:p-5 shadow-[0_4px_20px_-4px_rgba(40,30,20,0.06),0_2px_6px_-2px_rgba(40,30,20,0.03)] hover:shadow-[0_8px_30px_-6px_rgba(40,30,20,0.10)] transition-all flex flex-col justify-between space-y-3 sm:space-y-4">
           <div className="space-y-2.5 sm:space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border border-emerald-100">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+              <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border border-emerald-200/80">
                 <Sparkles size={12} className="text-emerald-600" />
                 <span>Une idée pour ce soir</span>
               </div>
               {savedSuggestions.length > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-stone-100 text-stone-700 rounded-full border border-stone-200/60">
                   {savedSuggestions.length}
                 </span>
               )}
             </div>
 
-            <p className="text-[11px] sm:text-xs text-slate-500 font-medium leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-stone-500 font-medium leading-relaxed">
               Consultez vos suggestions en cours ou proposez une nouvelle idée au planning.
             </p>
 
@@ -630,12 +643,12 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   return (
                     <div 
                       key={sug.date}
-                      className="p-2 bg-slate-50/80 hover:bg-emerald-50/40 border border-slate-200/60 rounded-xl flex items-center justify-between gap-2 transition-all group"
+                      className="p-2 bg-stone-50/90 hover:bg-emerald-50/50 border border-stone-200/80 rounded-xl flex items-center justify-between gap-2 transition-all group"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-800 truncate group-hover:text-emerald-900">{title}</p>
+                        <p className="text-xs font-bold text-stone-800 truncate group-hover:text-emerald-950">{title}</p>
                         {rec && (
-                          <span className="text-[10px] text-slate-400 font-medium">{rec.categorie}</span>
+                          <span className="text-[10px] text-stone-400 font-medium">{rec.categorie}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -644,14 +657,14 @@ export function HomePage({ onNavigate }: HomePageProps) {
                             setPlanningEntry(todayISO, sug.recetteId, sug.suggestionLibre);
                             setPlanningEntry(sug.date, null, null);
                           }}
-                          className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-xs"
+                          className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-xs active:scale-95 transition-all"
                           title="Choisir ce soir"
                         >
                           Mettre ce soir
                         </button>
                         <button 
                           onClick={() => setPlanningEntry(sug.date, null, null)}
-                          className="p-1 text-slate-300 hover:text-red-500 transition-colors"
+                          className="p-1 text-stone-300 hover:text-red-500 transition-colors"
                           title="Retirer"
                         >
                           <X size={12} />
@@ -661,8 +674,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   );
                 })
               ) : (
-                <div className="p-2.5 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                  <p className="text-xs text-slate-400 italic">
+                <div className="p-2.5 text-center border border-dashed border-stone-200 rounded-xl bg-stone-50/50">
+                  <p className="text-xs text-stone-400 italic">
                     Aucune proposition en attente.
                   </p>
                 </div>
@@ -670,7 +683,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 flex gap-2">
+          <div className="pt-2 border-t border-stone-100 flex gap-2">
             <button 
               onClick={() => setShowIdeaModal(true)}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2 sm:py-2.5 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 active:scale-95"
@@ -680,7 +693,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
             </button>
             <button 
               onClick={() => onNavigate('planning')}
-              className="px-3 py-2 sm:py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all"
+              className="px-3 py-2 sm:py-2.5 bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 rounded-xl text-xs font-semibold transition-all"
               title="Voir le planning"
             >
               Planning
@@ -691,7 +704,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
         {/* BENTO 3B — MES RECETTES & EXPLORER (6 cols on md, 3 on lg) */}
         <div 
           onClick={() => onNavigate('recettes')}
-          className="landscape:col-span-1 md:col-span-1 lg:col-span-3 rounded-2xl p-3.5 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between space-y-3 sm:space-y-4 relative overflow-hidden min-h-[140px] sm:min-h-[180px] lg:min-h-[200px]"
+          className="landscape:col-span-1 md:col-span-1 lg:col-span-3 rounded-2xl p-3.5 sm:p-5 shadow-[0_4px_20px_-4px_rgba(40,30,20,0.12)] hover:shadow-[0_8px_30px_-6px_rgba(40,30,20,0.20)] border border-stone-800/20 transition-all cursor-pointer group flex flex-col justify-between space-y-3 sm:space-y-4 relative overflow-hidden min-h-[140px] sm:min-h-[180px] lg:min-h-[200px]"
         >
           {/* Background Dish Image */}
           <img 
@@ -700,7 +713,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
           {/* Dark Overlay for Text Contrast */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/40" />
 
           <div className="space-y-2 sm:space-y-3 relative z-10">
             <div className="flex items-center justify-between border-b border-white/20 pb-2">
@@ -719,11 +732,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 <span className="text-2xl sm:text-4xl font-black text-white tracking-tight drop-shadow-xs">
                   {recettes.length}
                 </span>
-                <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                <span className="text-xs font-bold text-stone-200 uppercase tracking-wider">
                   recettes
                 </span>
               </div>
-              <p className="text-[11px] text-slate-300 font-medium mt-0.5">
+              <p className="text-[11px] text-stone-300 font-medium mt-0.5">
                 Livre de cuisine personnel
               </p>
             </div>
@@ -738,16 +751,16 @@ export function HomePage({ onNavigate }: HomePageProps) {
         </div>
 
         {/* BENTO 4 — MA LISTE DE COURSES (12 cols on md, 5 on lg) */}
-        <div className="landscape:col-span-2 md:col-span-2 lg:col-span-5 bg-white border border-slate-200/80 rounded-2xl p-3 sm:p-5 lg:p-6 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between">
+        <div className="landscape:col-span-2 md:col-span-2 lg:col-span-5 bg-white/95 backdrop-blur-xs border border-stone-200/90 rounded-2xl p-3 sm:p-5 lg:p-6 shadow-[0_4px_20px_-4px_rgba(40,30,20,0.06),0_2px_6px_-2px_rgba(40,30,20,0.03)] hover:shadow-[0_8px_30px_-6px_rgba(40,30,20,0.10)] transition-all flex flex-col justify-between">
           <div className="space-y-3 sm:space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2 sm:pb-3">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2 sm:pb-3">
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-sm sm:text-lg">🛒</span>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-stone-900">
                   MA LISTE DE COURSES
                 </h3>
               </div>
-              <span className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:px-2.5 bg-slate-100 text-slate-600 rounded-full">
+              <span className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:px-2.5 bg-stone-100 text-stone-700 rounded-full border border-stone-200/60">
                 {courses.length} article{courses.length > 1 ? 's' : ''}
               </span>
             </div>
@@ -758,7 +771,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 {courses.slice(0, 5).map((item) => (
                   <div 
                     key={item.id}
-                    className="flex items-center justify-between py-1 border-b border-slate-100/80 text-xs group"
+                    className="flex items-center justify-between py-1 border-b border-stone-100 text-xs group"
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <button 
@@ -766,23 +779,23 @@ export function HomePage({ onNavigate }: HomePageProps) {
                         className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border flex items-center justify-center transition-all shrink-0 ${
                           item.achete 
                             ? 'bg-emerald-600 border-emerald-600 text-white' 
-                            : 'border-slate-300 bg-white hover:border-emerald-500'
+                            : 'border-stone-300 bg-white hover:border-emerald-500'
                         }`}
                       >
                         {item.achete && <Check size={10} strokeWidth={3} />}
                       </button>
-                      <span className={`font-medium truncate ${item.achete ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                      <span className={`font-medium truncate ${item.achete ? 'line-through text-stone-400' : 'text-stone-800'}`}>
                         {item.nom}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500">
+                      <span className="text-[10px] sm:text-[11px] font-semibold text-stone-500">
                         {item.quantite > 0 && item.quantite} {item.unite !== 'pièce' ? item.unite : ''}
                       </span>
                       <button 
                         onClick={() => deleteShoppingItem(item.id)}
-                        className="text-slate-300 hover:text-red-500 transition-colors"
+                        className="text-stone-300 hover:text-red-500 transition-colors"
                         title="Supprimer"
                       >
                         <X size={13} />
@@ -792,7 +805,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-400 italic py-2 sm:py-4 text-center">
+              <p className="text-xs text-stone-400 italic py-2 sm:py-4 text-center">
                 Votre liste de courses est vide.
               </p>
             )}
@@ -806,18 +819,18 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   placeholder="Ex: Tomates, Lait 1L..." 
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  className="flex-1 bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                 />
                 <button 
                   type="submit" 
-                  className="bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-xs font-semibold hover:bg-emerald-700"
+                  className="bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-xs font-semibold hover:bg-emerald-700 shadow-2xs"
                 >
                   Ajouter
                 </button>
                 <button 
                   type="button" 
                   onClick={() => setShowAddShoppingInput(false)}
-                  className="p-1 text-slate-400 hover:text-slate-600"
+                  className="p-1 text-stone-400 hover:text-stone-600"
                 >
                   <X size={15} />
                 </button>
@@ -833,10 +846,10 @@ export function HomePage({ onNavigate }: HomePageProps) {
             )}
           </div>
 
-          <div className="pt-2 sm:pt-3 border-t border-slate-100">
+          <div className="pt-2 sm:pt-3 border-t border-stone-100">
             <button 
               onClick={() => onNavigate('courses')}
-              className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/80 font-semibold text-xs py-2 sm:py-2.5 rounded-xl transition-all flex items-center justify-center gap-2"
+              className="w-full bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200/80 font-semibold text-xs py-2 sm:py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-2xs"
             >
               <span>Voir ma liste complète</span>
               <ArrowRight size={13} />
@@ -849,23 +862,23 @@ export function HomePage({ onNavigate }: HomePageProps) {
       {/* --------------------------------------------------
           APERÇU — VOTRE SEMAINE & PRÉVISIONS
          -------------------------------------------------- */}
-      <section className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-xs hover:shadow-md transition-shadow space-y-4 sm:space-y-6">
+      <section className="bg-white/95 backdrop-blur-xs border border-stone-200/90 rounded-2xl p-4 sm:p-6 shadow-[0_4px_20px_-4px_rgba(40,30,20,0.06),0_2px_6px_-2px_rgba(40,30,20,0.03)] hover:shadow-[0_8px_30px_-6px_rgba(40,30,20,0.10)] transition-all space-y-4 sm:space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <CalendarIcon size={18} className="text-emerald-600" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-900">
               VOTRE SEMAINE & PRÉVISIONS
             </h3>
           </div>
 
           {/* Week selection tabs */}
-          <div className="flex items-center gap-1.5 bg-slate-100/90 p-1 rounded-xl self-start sm:self-auto text-xs">
+          <div className="flex items-center gap-1.5 bg-stone-100/90 p-1 rounded-xl self-start sm:self-auto text-xs border border-stone-200/60">
             <button
               onClick={() => setPreviewWeekIndex(0)}
               className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
                 previewWeekIndex === 0 
-                  ? 'bg-white text-emerald-800 shadow-2xs' 
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-emerald-800 shadow-2xs border border-stone-200/60' 
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               En cours
@@ -874,8 +887,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
               onClick={() => setPreviewWeekIndex(1)}
               className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
                 previewWeekIndex === 1 
-                  ? 'bg-white text-emerald-800 shadow-2xs' 
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-emerald-800 shadow-2xs border border-stone-200/60' 
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               Semaine +1
@@ -884,8 +897,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
               onClick={() => setPreviewWeekIndex(2)}
               className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
                 previewWeekIndex === 2 
-                  ? 'bg-white text-emerald-800 shadow-2xs' 
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-emerald-800 shadow-2xs border border-stone-200/60' 
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               2e prévision (+2)
@@ -906,18 +919,18 @@ export function HomePage({ onNavigate }: HomePageProps) {
           {weekDays.map((item) => (
             <div 
               key={item.iso}
-              className={`rounded-xl p-3 border flex flex-col justify-between transition-all ${
+              className={`rounded-xl p-3 border flex flex-col justify-between transition-all shadow-2xs ${
                 item.isToday 
-                  ? 'bg-emerald-50/40 border-emerald-500/80 ring-1 ring-emerald-500/30' 
+                  ? 'bg-emerald-50/60 border-emerald-500 ring-2 ring-emerald-500/20' 
                   : item.isPast
-                    ? 'bg-rose-50/40 border-rose-300/70 hover:border-rose-400 opacity-85 hover:opacity-100'
-                    : 'bg-white border-slate-200/80 hover:border-slate-300'
+                    ? 'bg-rose-50/45 border-rose-300/70 hover:border-rose-400 opacity-90 hover:opacity-100'
+                    : 'bg-white border-stone-200/90 hover:border-stone-300'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1">
                   <span className={`text-[11px] font-bold uppercase ${
-                    item.isToday ? 'text-emerald-700 font-extrabold' : item.isPast ? 'text-rose-900/70 font-bold' : 'text-slate-500'
+                    item.isToday ? 'text-emerald-800 font-extrabold' : item.isPast ? 'text-rose-900/80 font-bold' : 'text-stone-600'
                   }`}>
                     {item.label}
                   </span>
@@ -928,7 +941,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   )}
                 </div>
                 {item.isToday && (
-                  <span className="text-[9px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.2 rounded-full uppercase">
+                  <span className="text-[9px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.2 rounded-full uppercase shadow-2xs">
                     Auj.
                   </span>
                 )}
@@ -942,11 +955,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   }}
                   className="group cursor-pointer space-y-2 flex-1 flex flex-col justify-between"
                 >
-                  <div className="h-20 w-full rounded-lg overflow-hidden relative">
+                  <div className="h-20 w-full rounded-lg overflow-hidden relative shadow-2xs">
                     <img 
                       src={item.meal.image} 
                       alt={item.meal.nom} 
-                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform ${
+                      className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
                         item.isPast ? 'grayscale-[35%] opacity-85 group-hover:grayscale-0 group-hover:opacity-100' : ''
                       }`}
                     />
@@ -962,11 +975,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     </button>
                   </div>
                   <div>
-                    <span className="text-[9px] font-bold uppercase text-emerald-600 block line-clamp-1">
+                    <span className="text-[9px] font-bold uppercase text-emerald-700 block line-clamp-1">
                       {item.meal.categorie}
                     </span>
                     <h4 className={`text-xs font-bold line-clamp-2 leading-tight transition-colors ${
-                      item.isPast ? 'text-slate-700 group-hover:text-rose-800' : 'text-slate-900 group-hover:text-emerald-700'
+                      item.isPast ? 'text-stone-700 group-hover:text-rose-800' : 'text-stone-900 group-hover:text-emerald-700'
                     }`}>
                       {item.meal.nom}
                     </h4>
@@ -978,7 +991,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                   className={`h-28 border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-2 text-center cursor-pointer transition-all ${
                     item.isPast
                       ? 'border-rose-200 text-rose-400 hover:border-rose-400 hover:text-rose-600 bg-rose-50/30'
-                      : 'border-slate-200 hover:border-emerald-500 text-slate-400 hover:text-emerald-600 bg-slate-50/50'
+                      : 'border-stone-200 hover:border-emerald-500 text-stone-400 hover:text-emerald-600 bg-stone-50/50'
                   }`}
                 >
                   <Plus size={18} className="mb-1" />
@@ -998,7 +1011,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
         {/* CARTE 1 — ASTUCE DU JOUR DYNAMIQUE */}
-        <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md relative overflow-hidden flex flex-col justify-between">
+        <div className="bg-gradient-to-br from-stone-900 via-slate-900 to-emerald-950 text-white rounded-2xl p-6 shadow-[0_6px_24px_-4px_rgba(0,0,0,0.18)] border border-stone-800 relative overflow-hidden flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-amber-400">
@@ -1013,21 +1026,21 @@ export function HomePage({ onNavigate }: HomePageProps) {
               Astuce du jour — {tipOfTheDay.title}
             </h3>
 
-            <p className="text-xs text-slate-300 leading-relaxed font-normal">
+            <p className="text-xs text-stone-300 leading-relaxed font-normal">
               {tipOfTheDay.text}
             </p>
           </div>
 
-          <div className="pt-4 border-t border-slate-800 mt-4 flex items-center justify-between text-[11px] text-slate-400 font-medium">
+          <div className="pt-4 border-t border-stone-800/80 mt-4 flex items-center justify-between text-[11px] text-stone-400 font-medium">
             <span>Change chaque jour</span>
             <span className="text-emerald-400 font-semibold">BROCOLI Healthy Life</span>
           </div>
         </div>
 
         {/* CARTE 2 — RÉSUMÉ DES COURSES */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-white/95 backdrop-blur-xs border border-stone-200/90 rounded-2xl p-6 shadow-[0_4px_20px_-4px_rgba(40,30,20,0.06),0_2px_6px_-2px_rgba(40,30,20,0.03)] hover:shadow-[0_8px_30px_-6px_rgba(40,30,20,0.10)] transition-all flex flex-col justify-between">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-stone-400 block mb-2">
               RÉSUMÉ DES COURSES
             </span>
 
@@ -1035,27 +1048,27 @@ export function HomePage({ onNavigate }: HomePageProps) {
               <span className="text-4xl font-extrabold text-emerald-600 tracking-tight">
                 {totalCourses}
               </span>
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">
                 articles au total
               </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100">
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-stone-100">
+            <div className="bg-stone-50 p-3 rounded-xl border border-stone-200/80">
+              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
                 RESTANT
               </span>
-              <span className="text-lg font-bold text-slate-800">
+              <span className="text-lg font-bold text-stone-800">
                 {remainingCourses}
               </span>
             </div>
 
-            <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100/80">
-              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
+            <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200/80">
+              <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
                 ACHETÉ
               </span>
-              <span className="text-lg font-bold text-emerald-700">
+              <span className="text-lg font-bold text-emerald-800">
                 {boughtCourses}
               </span>
             </div>

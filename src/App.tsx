@@ -56,7 +56,7 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFCFB]">
+      <div className="min-h-screen flex items-center justify-center bg-[#F6F4EE]">
         <ChefHat className="text-emerald-600 animate-bounce" size={48} />
       </div>
     );
@@ -67,10 +67,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-[#F7F5F0] via-[#FAF8F5] to-[#F2EFE8] pb-24 text-slate-900 selection:bg-emerald-100 selection:text-emerald-900 relative overflow-x-hidden">
       <Navbar tabs={TABS} activeTab={activeTab} setActiveTab={setActiveTab} />
       
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 relative z-10">
         {storeLoading && (
           <div className="fixed top-6 right-6 z-50 bg-white/90 backdrop-blur shadow-xl shadow-emerald-500/5 border border-emerald-100 px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-emerald-600 flex items-center gap-3">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
