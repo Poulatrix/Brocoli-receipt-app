@@ -1,7 +1,8 @@
 import React from 'react';
-import { Clock, Users, Flame, Heart } from 'lucide-react';
+import { Clock, Users, Heart } from 'lucide-react';
 import { Recette } from '../types';
 import { useStore } from '../store';
+import { getDishImage } from '../lib/dishImages';
 
 interface RecipeCardProps {
   recette: Recette;
@@ -36,23 +37,33 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recette, onClick, viewMo
     updateRecette({ ...recette, favori: !recette.favori });
   };
 
+  const imageSrc = recette.image || getDishImage(recette.nom);
+
   return (
     <div 
       onClick={onClick}
-      className={`card transition-all cursor-pointer hover:shadow-md ${
-        isGrid ? 'flex flex-col' : 'flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3'
+      className={`card transition-all cursor-pointer hover:shadow-md group ${
+        isGrid 
+          ? 'flex flex-col h-[255px] sm:h-[265px] justify-between overflow-hidden' 
+          : 'flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3'
       }`}
     >
-      <div className={`relative bg-slate-100 ${isGrid ? 'w-full h-32 xs:h-36 sm:h-44 md:h-48 shrink-0 rounded-t-xl overflow-hidden' : 'w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0 rounded-xl overflow-hidden'}`}>
+      <div 
+        className={`relative bg-slate-100 overflow-hidden ${
+          isGrid 
+            ? 'w-full h-[170px] sm:h-[180px] shrink-0 rounded-t-xl' 
+            : 'w-16 h-16 sm:w-24 sm:h-24 flex-shrink-0 rounded-xl'
+        }`}
+      >
         <img 
-          src={recette.image || `https://picsum.photos/seed/${recette.id}/400/300`} 
+          src={imageSrc} 
           alt={recette.nom}
-          className="w-full h-full object-cover"
-          referrerPolicy="no-referrer"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          referrerPolicy="no-referrer" 
         />
         {isGrid && (
-          <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-            <span className={`px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shadow-xs ${CATEGORY_COLORS[recette.categorie] || 'bg-slate-100 text-slate-600'}`}>
+          <div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-10">
+            <span className={`px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shadow-xs max-w-[110px] truncate ${CATEGORY_COLORS[recette.categorie] || 'bg-slate-100 text-slate-600'}`}>
               {recette.categorie}
             </span>
             <button 
@@ -62,23 +73,29 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recette, onClick, viewMo
                 ? 'bg-rose-500 text-white shadow-md shadow-rose-200' 
                 : 'bg-white/80 text-slate-400 hover:text-rose-500 hover:bg-white'
               }`}
+              title={recette.favori ? "Retirer des favoris" : "Ajouter aux favoris"}
             >
               <Heart size={13} fill={recette.favori ? "currentColor" : "none"} strokeWidth={recette.favori ? 2 : 2.5} />
             </button>
           </div>
         )}
         {isGrid && (
-          <div className="absolute bottom-1.5 left-1.5">
-            <span className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold border backdrop-blur-md ${seasonInfo.className}`}>
+          <div className="absolute bottom-1.5 left-1.5 z-10">
+            <span className={`px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold border backdrop-blur-md bg-white/90 shadow-2xs ${seasonInfo.className}`}>
               {seasonInfo.icon} {seasonInfo.label}
             </span>
           </div>
         )}
       </div>
 
-      <div className={`flex-1 min-w-0 ${isGrid ? 'p-2.5 sm:p-3.5' : 'py-0.5'}`}>
-        <div className="flex justify-between items-start gap-2 mb-1.5">
-          <h3 className="font-bold text-slate-900 text-sm sm:text-base line-clamp-1 truncate">{recette.nom}</h3>
+      <div className={`flex-1 min-w-0 flex flex-col justify-between ${isGrid ? 'p-2.5 sm:p-3' : 'py-0.5'}`}>
+        <div className="flex justify-between items-start gap-1.5 mb-1">
+          <h3 
+            className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-1 truncate group-hover:text-emerald-700 transition-colors"
+            title={recette.nom}
+          >
+            {recette.nom}
+          </h3>
           {!isGrid && (
             <div className="flex items-center gap-1.5 shrink-0">
               <span className={`px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${CATEGORY_COLORS[recette.categorie] || 'bg-slate-100 text-slate-600'}`}>
@@ -91,6 +108,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recette, onClick, viewMo
                   ? 'text-rose-500' 
                   : 'text-slate-300 hover:text-rose-500'
                 }`}
+                title={recette.favori ? "Retirer des favoris" : "Ajouter aux favoris"}
               >
                 <Heart size={15} fill={recette.favori ? "currentColor" : "none"} strokeWidth={2.5} />
               </button>
@@ -100,12 +118,12 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recette, onClick, viewMo
         
         <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 font-medium">
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="flex items-center gap-1">
-              <Clock size={12} strokeWidth={2.5} className="text-slate-400" />
-              <span>{recette.prepMin + recette.cuissonMin} min</span>
+            <div className="flex items-center gap-1" title="Temps total">
+              <Clock size={11} strokeWidth={2.5} className="text-slate-400" />
+              <span>{Number(recette.prepMin || 0) + Number(recette.cuissonMin || 0)} min</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Users size={12} strokeWidth={2.5} className="text-slate-400" />
+            <div className="flex items-center gap-1" title="Nombre de portions">
+              <Users size={11} strokeWidth={2.5} className="text-slate-400" />
               <span>{recette.portions} pers.</span>
             </div>
           </div>

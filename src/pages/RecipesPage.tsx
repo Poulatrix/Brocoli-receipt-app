@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, LayoutGrid, List, Save, ChefHat, Filter, X, Heart, Camera, Sparkles } from 'lucide-react';
+import { Search, Plus, LayoutGrid, List, Save, ChefHat, Filter, X, Heart, Camera, Sparkles, Square, RectangleHorizontal } from 'lucide-react';
 import { useStore } from '../store';
 import { Recette, CategorieRecette } from '../types';
 import { RecipeCard } from '../components/RecipeCard';
@@ -16,6 +16,31 @@ export function RecipesPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<'tous' | 'ete' | 'hiver' | 'toute_annee'>('tous');
   const [maxTime, setMaxTime] = useState<number>(240);
+
+  // Bento slider scale: 100 = Grand / Actuel (max), 0 = Carré (min width, plus de recettes en largeur)
+  const [bentoSize, setBentoSize] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('mes_recettes_bento_size');
+      return saved !== null ? Number(saved) : 100;
+    } catch {
+      return 100;
+    }
+  });
+
+  const handleBentoSizeChange = (newSize: number) => {
+    setBentoSize(newSize);
+    try {
+      localStorage.setItem('mes_recettes_bento_size', String(newSize));
+    } catch {
+      // ignore
+    }
+  };
+
+  // When bentoSize is 0: min width is ~205px (fits 5-6 cards on desktop, square proportions)
+  // When bentoSize is 100: min width is ~360px (fits 2-3 cards on desktop, wide rectangular bento)
+  const minCardWidth = useMemo(() => {
+    return Math.round(205 + (bentoSize / 100) * 155);
+  }, [bentoSize]);
 
   const allCategories = useMemo(() => {
     const hardcoded = ['Viande', 'Poisson', 'Végétarien', 'Pâtes', 'Soupe', 'Dessert', 'Entrée', 'Autre'];
@@ -147,8 +172,8 @@ export function RecipesPage() {
       </div>
 
       <div className="flex flex-col gap-4 mb-6">
-        <div className="flex gap-2.5 items-center justify-between">
-          <div className="flex-1 relative">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2.5 items-center justify-between">
+          <div className="flex-1 min-w-[200px] relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text"
@@ -160,6 +185,51 @@ export function RecipesPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Bento Width Slider (Curseur de grandeur) when in Grid mode */}
+            {viewMode === 'grid' && (
+              <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-white border border-slate-200/90 rounded-xl shadow-xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden md:inline">
+                  Taille bentos :
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleBentoSizeChange(0)}
+                  className={`p-1 rounded-md transition-all ${
+                    bentoSize === 0 
+                      ? 'bg-emerald-100/80 text-emerald-700 font-bold shadow-2xs' 
+                      : 'text-slate-400 hover:text-slate-700'
+                  }`}
+                  title="Format Carré (Plus compact, plus de bentos en largeur)"
+                >
+                  <Square size={13} strokeWidth={2.5} />
+                </button>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={bentoSize}
+                    onChange={(e) => handleBentoSizeChange(Number(e.target.value))}
+                    className="w-16 sm:w-24 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 transition-all"
+                    title={`Largeur : ${bentoSize === 0 ? 'Carré minimal' : bentoSize === 100 ? 'Grandeur maximale' : `${bentoSize}%`}`}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleBentoSizeChange(100)}
+                  className={`p-1 rounded-md transition-all ${
+                    bentoSize === 100 
+                      ? 'bg-emerald-100/80 text-emerald-700 font-bold shadow-2xs' 
+                      : 'text-slate-400 hover:text-slate-700'
+                  }`}
+                  title="Grandeur maximale actuelle (Bentos larges)"
+                >
+                  <RectangleHorizontal size={15} strokeWidth={2} />
+                </button>
+              </div>
+            )}
+
             <button 
               onClick={() => setShowFilters(true)}
               className={`md:hidden px-3 py-2 bg-white border rounded-xl transition-all shadow-xs flex items-center gap-1.5 text-xs font-bold ${
@@ -180,7 +250,7 @@ export function RecipesPage() {
               <button 
                 onClick={() => setViewMode('grid')}
                 className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow-xs text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-600'}`}
-                title="Vue grille"
+                title="Vue grille (Bentos)"
               >
                 <LayoutGrid size={16} />
               </button>
@@ -281,7 +351,7 @@ export function RecipesPage() {
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
-                className="relative w-full max-w-lg bg-white rounded-t-[2rem] sm:rounded-3xl p-8 shadow-2xl overflow-hidden max-h-[80vh] flex flex-col"
+                className="relative w-full max-w-lg bg-white rounded-t-[2rem] sm:rounded-3xl p-8 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
               >
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-bold text-slate-900">Filtres</h3>
@@ -291,6 +361,31 @@ export function RecipesPage() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto space-y-8 pr-2">
+                  {/* Mobile Bento size slider */}
+                  <div className="space-y-3 pb-2 border-b border-slate-100">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        Taille des bentos
+                      </label>
+                      <span className="text-xs font-semibold text-emerald-600">
+                        {bentoSize === 0 ? 'Carré compact' : bentoSize === 100 ? 'Grandeur max' : `${bentoSize}%`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Square size={16} className="text-slate-400" />
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        step="5"
+                        value={bentoSize}
+                        onChange={(e) => handleBentoSizeChange(Number(e.target.value))}
+                        className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                      />
+                      <RectangleHorizontal size={18} className="text-slate-400" />
+                    </div>
+                  </div>
+
                   <div className="space-y-4">
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Favoris & Catégories</label>
                     <div className="flex flex-wrap gap-2">
@@ -394,7 +489,12 @@ export function RecipesPage() {
             <Heart size={20} fill="currentColor" />
             <h3 className="text-lg font-bold tracking-tight">Mes favoris</h3>
           </div>
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 landscape:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6' : 'space-y-3'}>
+          <div 
+            className={viewMode === 'grid' ? 'grid gap-3 sm:gap-5' : 'space-y-3'}
+            style={viewMode === 'grid' ? {
+              gridTemplateColumns: `repeat(auto-fill, minmax(${minCardWidth}px, 1fr))`
+            } : undefined}
+          >
             {favorites.map((recette) => (
               <RecipeCard 
                 key={recette.id} 
@@ -409,7 +509,12 @@ export function RecipesPage() {
       )}
 
       {filteredRecettes.length > 0 ? (
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 landscape:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6' : 'space-y-3'}>
+        <div 
+          className={viewMode === 'grid' ? 'grid gap-3 sm:gap-5' : 'space-y-3'}
+          style={viewMode === 'grid' ? {
+            gridTemplateColumns: `repeat(auto-fill, minmax(${minCardWidth}px, 1fr))`
+          } : undefined}
+        >
           {filteredRecettes.map((recette) => (
             <RecipeCard 
               key={recette.id} 

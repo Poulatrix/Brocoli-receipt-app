@@ -78,6 +78,61 @@ Retourne uniquement un objet JSON suivant ce format exact:
     }
   });
 
+  // API: Generate recipe from title / meal idea
+  app.post("/api/generate-from-title", async (req, res) => {
+    try {
+      const { title, hint } = req.body;
+      if (!title) {
+        return res.status(400).json({ error: "Titre du plat manquant" });
+      }
+
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ error: "GEMINI_API_KEY non configurée" });
+      }
+
+      const prompt = `Tu es un chef cuisinier expert.
+Génère une recette de cuisine complète, délicieuse, équilibrée et facile à suivre pour le plat suivant : "${title}".
+${hint ? `Consigne ou préférence spécifique : "${hint}"` : ''}
+
+Retourne UNIQUEMENT un objet JSON suivant ce format exact en français :
+{
+  "nom": "${title}",
+  "categorie": "Viande | Poisson | Végétarien | Pâtes | Soupe | Dessert | Entrée | Autre",
+  "saison": "ete | hiver | toute_annee",
+  "portions": 4,
+  "prepMin": 15,
+  "cuissonMin": 20,
+  "calories": 450,
+  "ingredients": [
+    { "quantite": 200, "unite": "g", "nom": "Farine" }
+  ],
+  "instructions": [
+    { "titre": "Étape 1", "texte": "Description claire et pédagogique..." }
+  ]
+}`;
+
+      const responseData = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: [{
+          role: 'user',
+          parts: [{ text: prompt }]
+        }],
+        config: {
+          responseMimeType: "application/json",
+        },
+      });
+
+      if (!responseData.text) {
+        return res.status(500).json({ error: "Réponse vide de Gemini" });
+      }
+
+      return res.json(JSON.parse(responseData.text));
+    } catch (error: any) {
+      console.error("Gemini Generate Recipe Error:", error);
+      return res.status(500).json({ error: error?.message || "Erreur lors de la génération" });
+    }
+  });
+
   // API: Image parse (Photo analysis)
   app.post("/api/parse-image", async (req, res) => {
     try {

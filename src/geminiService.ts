@@ -67,6 +67,66 @@ Retourne uniquement un objet JSON suivant ce format exact:
   }
 }
 
+export async function generateRecipeFromTitle(title: string, hint?: string) {
+  try {
+    const res = await fetch("/api/generate-from-title", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, hint }),
+    });
+
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn("API /api/generate-from-title failed, trying fallback:", err);
+  }
+
+  try {
+    const ai = getAiFallback();
+    const prompt = `Tu es un chef cuisinier expert.
+Génère une recette de cuisine complète, délicieuse, équilibrée et facile à suivre pour le plat suivant : "${title}".
+${hint ? `Consigne ou préférence spécifique : "${hint}"` : ''}
+
+Retourne UNIQUEMENT un objet JSON suivant ce format exact en français :
+{
+  "nom": "${title}",
+  "categorie": "Viande | Poisson | Végétarien | Pâtes | Soupe | Dessert | Entrée | Autre",
+  "saison": "ete | hiver | toute_annee",
+  "portions": 4,
+  "prepMin": 15,
+  "cuissonMin": 20,
+  "calories": 450,
+  "ingredients": [
+    { "quantite": 200, "unite": "g", "nom": "Farine" }
+  ],
+  "instructions": [
+    { "titre": "Étape 1", "texte": "Description claire et pédagogique..." }
+  ]
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: [{
+        role: 'user',
+        parts: [{ text: prompt }]
+      }],
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    if (!response.text) {
+      throw new Error("L'IA n'a pas retourné de recette");
+    }
+
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Erreur lors de la génération de recette par titre:", error);
+    return null;
+  }
+}
+
 export async function parseRecipeFromImage(
   imageBase64: string, 
   mimeType: string = "image/jpeg", 

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus, Minus, ShoppingCart, Pencil, Trash2, ChevronRight, Clock, Users, Flame, ChefHat, Share2, ChevronLeft, Printer, Mail, MessageCircle, Copy, Heart } from 'lucide-react';
 import { Recette, Ingredient } from '../types';
 import { useStore } from '../store';
+import { getDishImage } from '../lib/dishImages';
 
 interface RecipeDetailModalProps {
   recette: Recette;
@@ -288,7 +289,7 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
         {/* Modal Header Image */}
         <div 
           className="md:h-52 h-40 bg-cover bg-center shrink-0 relative" 
-          style={{ backgroundImage: `url(${recette.image || `https://picsum.photos/seed/${recette.id}/1000/400`})` }}
+          style={{ backgroundImage: `url(${recette.image || getDishImage(recette.nom)})` }}
         >
           <div className="w-full h-full bg-gradient-to-t from-black/60 to-transparent flex items-end p-6 md:p-8">
             <div className="flex items-center gap-4">

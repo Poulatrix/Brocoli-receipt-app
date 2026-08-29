@@ -30,6 +30,8 @@ import { useStore } from '../store';
 import { Recette, PlanningEntry } from '../types';
 import { RecipeDetailModal } from '../components/RecipeDetailModal';
 import { RecipeFormModal } from '../components/RecipeFormModal';
+import { CustomMealModal } from '../components/CustomMealModal';
+import { getDishImage } from '../lib/dishImages';
 
 interface HomePageProps {
   onNavigate: (tabId: string) => void;
@@ -115,6 +117,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
     recettes, 
     planning, 
     courses, 
+    addRecette,
     updateRecette, 
     deleteRecette,
     setPlanningEntry, 
@@ -127,7 +130,10 @@ export function HomePage({ onNavigate }: HomePageProps) {
   // Modal States
   const [selectedRecipe, setSelectedRecipe] = useState<Recette | null>(null);
   const [editingRecipe, setEditingRecipe] = useState<Recette | null>(null);
+  const [formRecipeInitial, setFormRecipeInitial] = useState<Partial<Recette> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [activeCustomMeal, setActiveCustomMeal] = useState<{ dishName: string; dateStr: string } | null>(null);
+  const [targetDateForNewRecipe, setTargetDateForNewRecipe] = useState<string | null>(null);
   
   // "Une idée pour ce soir ?" Modal state
   const [showIdeaModal, setShowIdeaModal] = useState(false);
@@ -176,7 +182,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
           entry,
           recipe,
           nom: recipe.nom,
-          image: recipe.image || `https://picsum.photos/seed/${recipe.id}/800/500`,
+          image: recipe.image || getDishImage(recipe.nom),
           categorie: recipe.categorie || 'RECETTE',
           prepMin: recipe.prepMin || 0,
           cuissonMin: recipe.cuissonMin || 0,
@@ -192,7 +198,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
         entry,
         recipe: null,
         nom: entry.suggestionLibre,
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
+        image: getDishImage(entry.suggestionLibre),
         categorie: 'Plat Personnalisé',
         prepMin: null,
         cuissonMin: null,
@@ -306,10 +312,14 @@ export function HomePage({ onNavigate }: HomePageProps) {
       {/* --------------------------------------------------
           AMBIENT BACKGROUND DEPTH & WARMTH ORBS
          -------------------------------------------------- */}
-      <div className="pointer-events-none absolute -top-20 -left-20 w-80 sm:w-96 h-80 sm:h-96 bg-emerald-500/10 rounded-full blur-3xl -z-10" />
-      <div className="pointer-events-none absolute top-32 -right-24 w-80 sm:w-[28rem] h-80 sm:h-[28rem] bg-amber-400/10 rounded-full blur-3xl -z-10" />
-      <div className="pointer-events-none absolute top-1/2 left-1/3 -translate-x-1/2 w-96 sm:w-[32rem] h-96 sm:h-[32rem] bg-orange-300/8 rounded-full blur-3xl -z-10" />
-      <div className="pointer-events-none absolute -bottom-10 right-10 w-80 sm:w-96 h-80 sm:h-96 bg-emerald-600/8 rounded-full blur-3xl -z-10" />
+      {/* Delicate dot/grain backdrop */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#10b98112_1px,transparent_1px)] [background-size:24px_24px] opacity-70 -z-10" />
+      
+      {/* Multi-layered warm atmospheric glow orbs */}
+      <div className="pointer-events-none absolute -top-28 -left-28 w-96 sm:w-[32rem] h-96 sm:h-[32rem] bg-gradient-to-br from-emerald-500/15 via-teal-400/10 to-transparent rounded-full blur-3xl -z-10" />
+      <div className="pointer-events-none absolute top-40 -right-28 w-96 sm:w-[34rem] h-96 sm:h-[34rem] bg-gradient-to-bl from-amber-400/15 via-orange-300/10 to-transparent rounded-full blur-3xl -z-10" />
+      <div className="pointer-events-none absolute top-[45%] left-1/2 -translate-x-1/2 w-[36rem] sm:w-[48rem] h-[36rem] sm:h-[48rem] bg-gradient-to-tr from-emerald-600/8 via-lime-400/8 to-amber-200/8 rounded-full blur-3xl -z-10" />
+      <div className="pointer-events-none absolute -bottom-20 right-10 w-96 sm:w-[30rem] h-96 sm:h-[30rem] bg-gradient-to-tl from-emerald-600/12 to-teal-500/8 rounded-full blur-3xl -z-10" />
 
       {/* --------------------------------------------------
           HEADER
@@ -442,10 +452,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     <h2 
                       onClick={() => {
                         if (todayMeal.recipe) setSelectedRecipe(todayMeal.recipe);
+                        else if (todayMeal.type === 'custom') setActiveCustomMeal({ dishName: todayMeal.nom, dateStr: todayISO });
                       }}
-                      className={`text-base sm:text-2xl lg:text-3xl font-bold tracking-tight drop-shadow-md line-clamp-1 sm:line-clamp-2 ${
-                        todayMeal.recipe ? 'hover:text-emerald-300 cursor-pointer' : ''
-                      }`}
+                      className="text-base sm:text-2xl lg:text-3xl font-bold tracking-tight drop-shadow-md line-clamp-1 sm:line-clamp-2 hover:text-emerald-300 cursor-pointer"
                     >
                       {todayMeal.nom}
                     </h2>
@@ -469,7 +478,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     {todayMeal.type === 'custom' && (
                       <span className="flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border border-emerald-200/80 text-[10px] font-bold">
                         <Utensils size={11} className="text-emerald-600" />
-                        Saisie manuelle
+                        Idée libre
                       </span>
                     )}
                   </div>
@@ -483,13 +492,22 @@ export function HomePage({ onNavigate }: HomePageProps) {
                       <ArrowRight size={14} />
                     </button>
                   ) : (
-                    <button 
-                      onClick={() => setAssigningDate(todayISO)}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-3 py-1.5 sm:py-2.5 rounded-xl transition-all flex items-center justify-center gap-2"
-                    >
-                      <Edit3 size={13} />
-                      <span>Modifier</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setActiveCustomMeal({ dishName: todayMeal.nom, dateStr: todayISO })}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-1.5 sm:py-2.5 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Sparkles size={13} />
+                        <span>Créer la recette</span>
+                      </button>
+                      <button 
+                        onClick={() => setAssigningDate(todayISO)}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-2.5 py-1.5 sm:py-2.5 rounded-xl transition-all flex items-center justify-center"
+                        title="Changer de repas"
+                      >
+                        <Edit3 size={13} />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -549,10 +567,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     <h3 
                       onClick={() => {
                         if (tomorrowMeal.recipe) setSelectedRecipe(tomorrowMeal.recipe);
+                        else if (tomorrowMeal.type === 'custom') setActiveCustomMeal({ dishName: tomorrowMeal.nom, dateStr: tomorrowISO });
                       }}
-                      className={`text-sm sm:text-lg font-bold tracking-tight line-clamp-1 ${
-                        tomorrowMeal.recipe ? 'hover:text-emerald-300 cursor-pointer' : ''
-                      }`}
+                      className="text-sm sm:text-lg font-bold tracking-tight line-clamp-1 hover:text-emerald-300 cursor-pointer"
                     >
                       {tomorrowMeal.nom}
                     </h3>
@@ -568,7 +585,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                       </span>
                     ) : (
                       <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60">
-                        Saisie manuelle
+                        Idée libre
                       </span>
                     )}
                   </div>
@@ -582,12 +599,22 @@ export function HomePage({ onNavigate }: HomePageProps) {
                       <ChevronRight size={13} />
                     </button>
                   ) : (
-                    <button 
-                      onClick={() => setAssigningDate(tomorrowISO)}
-                      className="bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl transition-all"
-                    >
-                      Modifier
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        onClick={() => setActiveCustomMeal({ dishName: tomorrowMeal.nom, dateStr: tomorrowISO })}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl shadow-xs transition-all flex items-center gap-1"
+                      >
+                        <Sparkles size={12} />
+                        <span>Créer</span>
+                      </button>
+                      <button 
+                        onClick={() => setAssigningDate(tomorrowISO)}
+                        className="bg-stone-100 hover:bg-stone-200 text-stone-700 font-semibold text-xs px-2 py-1 sm:py-1.5 rounded-xl transition-all"
+                        title="Modifier"
+                      >
+                        <Edit3 size={12} />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -951,6 +978,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 <div 
                   onClick={() => {
                     if (item.meal?.recipe) setSelectedRecipe(item.meal.recipe);
+                    else if (item.meal?.type === 'custom') setActiveCustomMeal({ dishName: item.meal.nom, dateStr: item.iso });
                     else setAssigningDate(item.iso);
                   }}
                   className="group cursor-pointer space-y-2 flex-1 flex flex-col justify-between"
@@ -1162,7 +1190,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                         >
                           <div className="flex items-center gap-3">
                             <img 
-                              src={r.image || `https://picsum.photos/seed/${r.id}/100/100`} 
+                              src={r.image || getDishImage(r.nom)} 
                               alt={r.nom} 
                               className="w-10 h-10 object-cover rounded-lg"
                             />
@@ -1341,7 +1369,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                         >
                           <div className="flex items-center gap-3">
                             <img 
-                              src={r.image || `https://picsum.photos/seed/${r.id}/100/100`} 
+                              src={r.image || getDishImage(r.nom)} 
                               alt={r.nom} 
                               className="w-10 h-10 object-cover rounded-lg"
                             />
@@ -1416,17 +1444,54 @@ export function HomePage({ onNavigate }: HomePageProps) {
       )}
 
       {/* --------------------------------------------------
-          MODAL FORM RECETTE (Si modification)
+          MODAL CUSTOM MEAL (Transformer une idée libre)
+         -------------------------------------------------- */}
+      {activeCustomMeal && (
+        <CustomMealModal
+          dishName={activeCustomMeal.dishName}
+          dateStr={activeCustomMeal.dateStr}
+          onClose={() => setActiveCustomMeal(null)}
+          onOpenRecipeForm={(initialData) => {
+            const targetDate = activeCustomMeal.dateStr;
+            setActiveCustomMeal(null);
+            setFormRecipeInitial(initialData);
+            setEditingRecipe(null);
+            setTargetDateForNewRecipe(targetDate);
+            setIsFormOpen(true);
+          }}
+          onChangeDish={() => {
+            const targetDate = activeCustomMeal.dateStr;
+            setActiveCustomMeal(null);
+            setAssigningDate(targetDate);
+          }}
+        />
+      )}
+
+      {/* --------------------------------------------------
+          MODAL FORM RECETTE (Création ou modification)
          -------------------------------------------------- */}
       {isFormOpen && (
         <RecipeFormModal 
-          recette={editingRecipe}
-          onClose={() => setIsFormOpen(false)}
-          onSave={(updated) => {
+          recette={editingRecipe || formRecipeInitial}
+          onClose={() => {
+            setIsFormOpen(false);
+            setEditingRecipe(null);
+            setFormRecipeInitial(null);
+            setTargetDateForNewRecipe(null);
+          }}
+          onSave={async (savedRecipe) => {
             if (editingRecipe) {
-              updateRecette(updated);
+              await updateRecette(savedRecipe);
+            } else {
+              await addRecette(savedRecipe);
+              if (targetDateForNewRecipe) {
+                await setPlanningEntry(targetDateForNewRecipe, savedRecipe.id, null);
+              }
             }
             setIsFormOpen(false);
+            setEditingRecipe(null);
+            setFormRecipeInitial(null);
+            setTargetDateForNewRecipe(null);
           }}
         />
       )}

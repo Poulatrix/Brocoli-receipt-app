@@ -12,7 +12,9 @@ import {
   CheckCircle2, 
   X,
   RotateCcw,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Sparkles,
+  BookOpen
 } from 'lucide-react';
 import { 
   format, 
@@ -27,11 +29,18 @@ import {
 import { fr } from 'date-fns/locale';
 import { useStore } from '../store';
 import { Recette, PlanningEntry } from '../types';
+import { getDishImage } from '../lib/dishImages';
+import { CustomMealModal } from '../components/CustomMealModal';
+import { RecipeFormModal } from '../components/RecipeFormModal';
 
 export function PlanningPage() {
-  const { recettes, planning, setPlanningEntry, addToShoppingList } = useStore();
+  const { recettes, planning, setPlanningEntry, addRecette, addToShoppingList } = useStore();
   const [isAssigning, setIsAssigning] = useState<{ date: string } | null>(null);
   const [selectedSuggest, setSelectedSuggest] = useState<PlanningEntry | null>(null);
+  const [activeCustomMeal, setActiveCustomMeal] = useState<{ dishName: string; dateStr: string } | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formRecipeInitial, setFormRecipeInitial] = useState<Partial<Recette> | null>(null);
+  const [targetDateForNewRecipe, setTargetDateForNewRecipe] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [suggestSearchTerm, setSuggestSearchTerm] = useState('');
   const [newSuggestion, setNewSuggestion] = useState('');
@@ -218,6 +227,8 @@ export function PlanningPage() {
         onClick={() => {
           if (selectedSuggest) {
             handleAssignSuggestToDate(dateStr);
+          } else if (entry?.suggestionLibre) {
+            setActiveCustomMeal({ dishName: entry.suggestionLibre, dateStr });
           } else {
             setIsAssigning({ date: dateStr });
           }
@@ -263,11 +274,11 @@ export function PlanningPage() {
           <div className="space-y-2 flex-1 flex flex-col justify-between">
             <div className="relative w-full h-20 sm:h-22 rounded-xl overflow-hidden border border-slate-100 shadow-2xs group/img">
               <img 
-                src={recette.image || `https://picsum.photos/seed/${recette.id}/300/200`} 
+                src={recette.image || getDishImage(recette.nom)} 
                 className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
                   isPast ? 'grayscale-[35%] opacity-85 group-hover:grayscale-0 group-hover:opacity-100' : ''
                 }`}
-                alt=""
+                alt={recette.nom}
                 referrerPolicy="no-referrer"
               />
               
@@ -298,27 +309,42 @@ export function PlanningPage() {
           </div>
         ) : entry?.suggestionLibre ? (
           <div className="space-y-2 flex-1 flex flex-col justify-between">
-            <div className="relative w-full h-20 sm:h-22 rounded-xl overflow-hidden border border-slate-100 shadow-2xs bg-slate-100">
+            <div className="relative w-full h-20 sm:h-22 rounded-xl overflow-hidden border border-slate-100 shadow-2xs bg-slate-100 group/custom">
               <img 
-                src={`https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80`} 
-                className={`w-full h-full object-cover opacity-85 ${
-                  isPast ? 'grayscale-[35%] group-hover:grayscale-0' : ''
+                src={getDishImage(entry.suggestionLibre)} 
+                className={`w-full h-full object-cover group-hover/custom:scale-105 transition-transform duration-300 ${
+                  isPast ? 'grayscale-[35%] opacity-85 group-hover/custom:grayscale-0 group-hover/custom:opacity-100' : ''
                 }`}
-                alt=""
+                alt={entry.suggestionLibre}
                 referrerPolicy="no-referrer"
               />
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPlanningEntry(dateStr, null, null);
-                }}
-                className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Retirer l'idée"
-              >
-                <Trash2 size={12} />
-              </button>
-              <div className="absolute bottom-1 left-1 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded text-[9px] font-semibold text-white uppercase tracking-wider">
-                Idée libre
+              
+              {/* Action buttons on image */}
+              <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveCustomMeal({ dishName: entry.suggestionLibre!, dateStr });
+                  }}
+                  className="p-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                  title="Transformer en fiche recette"
+                >
+                  <Sparkles size={12} />
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPlanningEntry(dateStr, null, null);
+                  }}
+                  className="p-1 rounded-full bg-black/60 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                  title="Retirer l'idée"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+
+              <div className="absolute bottom-1 left-1 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded text-[9px] font-semibold text-white uppercase tracking-wider flex items-center gap-1">
+                <span>Idée libre</span>
               </div>
             </div>
             <div>
@@ -520,24 +546,35 @@ export function PlanningPage() {
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-100 shadow-sm">
                     <img 
-                      src={r?.image || (suggest.suggestionLibre ? `https://loremflickr.com/200/200/food,${encodeURIComponent(suggest.suggestionLibre.split(' ')[0])}?lock=${suggest.date.length}` : `https://picsum.photos/seed/${idx}/48/48`)} 
+                      src={r?.image || getDishImage(r?.nom || suggest.suggestionLibre)} 
                       className="w-full h-full object-cover" 
                       alt="" 
                       referrerPolicy="no-referrer" 
                     />
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-900 text-sm leading-tight">{r?.nom || suggest.suggestionLibre}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-slate-900 text-sm leading-tight line-clamp-1">{r?.nom || suggest.suggestionLibre}</p>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{r?.categorie || 'IDÉE LIBRE'}</p>
                   </div>
                 </div>
-                <button 
-                  className="w-full py-2 bg-slate-50 border border-slate-100 text-emerald-600 text-xs font-bold rounded-lg hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1"
-                  onClick={() => setSelectedSuggest(suggest)}
-                >
-                  <Plus size={14} />
-                  Planifier ce repas
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    className="flex-1 py-2 bg-slate-50 border border-slate-100 text-emerald-600 text-xs font-bold rounded-lg hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1"
+                    onClick={() => setSelectedSuggest(suggest)}
+                  >
+                    <Plus size={14} />
+                    Planifier ce repas
+                  </button>
+                  {suggest.suggestionLibre && (
+                    <button
+                      className="p-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-colors"
+                      onClick={() => setActiveCustomMeal({ dishName: suggest.suggestionLibre!, dateStr: suggest.date })}
+                      title="Créer la fiche recette"
+                    >
+                      <Sparkles size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -560,7 +597,7 @@ export function PlanningPage() {
               </div>
               <div className="flex items-center gap-4 grayscale group-hover:grayscale-0 transition-all">
                 <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-100 shadow-sm">
-                  <img src={r.image || `https://picsum.photos/seed/${idx}/48/48`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                  <img src={r.image || getDishImage(r.nom)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                 </div>
                 <div>
                   <p className="font-bold text-slate-900 text-sm leading-tight">{r.nom}</p>
@@ -576,6 +613,45 @@ export function PlanningPage() {
       </div>
 
       <AnimatePresence>
+        {/* Custom Meal Modal (for free-text entries) */}
+        {activeCustomMeal && (
+          <CustomMealModal
+            dishName={activeCustomMeal.dishName}
+            dateStr={activeCustomMeal.dateStr}
+            onClose={() => setActiveCustomMeal(null)}
+            onOpenRecipeForm={(initial) => {
+              setFormRecipeInitial(initial);
+              setTargetDateForNewRecipe(activeCustomMeal.dateStr);
+              setIsFormOpen(true);
+            }}
+            onChangeDish={() => {
+              const targetDate = activeCustomMeal.dateStr;
+              setActiveCustomMeal(null);
+              setIsAssigning({ date: targetDate });
+            }}
+          />
+        )}
+
+        {/* Recipe Form Modal when creating recipe from custom meal or scratch */}
+        {isFormOpen && (
+          <RecipeFormModal
+            recette={formRecipeInitial}
+            onClose={() => {
+              setIsFormOpen(false);
+              setFormRecipeInitial(null);
+              setTargetDateForNewRecipe(null);
+            }}
+            onSave={async (newRecipe) => {
+              await addRecette(newRecipe);
+              if (targetDateForNewRecipe) {
+                await setPlanningEntry(targetDateForNewRecipe, newRecipe.id, null);
+              }
+              setIsFormOpen(false);
+              setFormRecipeInitial(null);
+              setTargetDateForNewRecipe(null);
+            }}
+          />
+        )}
         {/* Shopping selection Modal */}
         {showShoppingTools && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -615,7 +691,7 @@ export function PlanningPage() {
                   >
                     <div className="flex items-center gap-4">
                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-white border border-slate-100">
-                         <img src={p.recette?.image} className="w-full h-full object-cover" alt="" />
+                         <img src={p.recette?.image || getDishImage(p.recette?.nom || p.suggestionLibre)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                        </div>
                        <div className="text-left">
                          <p className="text-xs font-bold text-slate-900 line-clamp-1">{p.recette?.nom}</p>
@@ -693,7 +769,7 @@ export function PlanningPage() {
                       className="w-full flex items-center gap-3 p-3 rounded-2xl border border-gray-50 hover:border-emerald-200 hover:bg-emerald-50 transition-all text-left group"
                     >
                       <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
-                        <img src={r.image || `https://picsum.photos/seed/${r.id}/40/40`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                        <img src={r.image || getDishImage(r.nom)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                       </div>
                       <div className="flex-1">
                         <p className="font-bold text-gray-900 group-hover:text-emerald-700 transition-colors">{r.nom}</p>
@@ -780,7 +856,7 @@ export function PlanningPage() {
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <div className="w-9 h-9 rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
-                                <img src={r.image || `https://picsum.photos/seed/${r.id}/36/36`} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                                <img src={r.image || getDishImage(r.nom)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                               </div>
                               <div className="min-w-0">
                                 <p className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-emerald-900">{r.nom}</p>

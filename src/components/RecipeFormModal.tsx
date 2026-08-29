@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, Plus, Trash2, Image as ImageIcon, Sparkles, Loader2, Clipboard, Camera, Upload, CheckCircle2, FileText } from 'lucide-react';
+import { X, Plus, Trash2, Image as ImageIcon, Sparkles, Loader2, Clipboard, Camera, Upload, CheckCircle2, FileText, Wand2 } from 'lucide-react';
 import { Recette, CategorieRecette, Ingredient, Instruction } from '../types';
-import { parseRecipe, parseRecipeFromImage } from '../geminiService';
+import { parseRecipe, parseRecipeFromImage, generateRecipeFromTitle } from '../geminiService';
 import { uploadImageToSupabase, convertAndResizeToWebp } from '../lib/supabase';
+import { getDishImage } from '../lib/dishImages';
 import { useStore } from '../store';
 
 interface RecipeFormModalProps {
-  recette: Recette | null;
+  recette?: Partial<Recette> | null;
   onClose: () => void;
   onSave: (recette: Recette) => void;
   initialShowIA?: boolean;
-  initialIAMode?: 'text' | 'photo';
+  initialIAMode?: 'text' | 'photo' | 'title';
 }
 
 const CATEGORIES: CategorieRecette[] = [
@@ -38,8 +39,9 @@ export function RecipeFormModal({ recette, onClose, onSave, initialShowIA = fals
   const [isLoadingIA, setIsLoadingIA] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [showIAPaste, setShowIAPaste] = useState(initialShowIA);
-  const [iaMode, setIaMode] = useState<'text' | 'photo'>(initialIAMode);
+  const [iaMode, setIaMode] = useState<'text' | 'photo' | 'title'>(initialIAMode);
   const [rawRecipeText, setRawRecipeText] = useState('');
+  const [iaTitleHint, setIaTitleHint] = useState('');
 
   // AI Photo Analysis States
   const [iaPhotoFile, setIaPhotoFile] = useState<File | null>(null);
@@ -47,6 +49,37 @@ export function RecipeFormModal({ recette, onClose, onSave, initialShowIA = fals
   const [iaPhotoPrompt, setIaPhotoPrompt] = useState('');
   const [usePhotoAsCover, setUsePhotoAsCover] = useState(true);
   const [iaSuccessMsg, setIaSuccessMsg] = useState<string | null>(null);
+
+  const handleGenerateFromTitle = async (customTitle?: string) => {
+    const titleToUse = customTitle || formData.nom;
+    if (!titleToUse?.trim()) {
+      alert("Veuillez d'abord saisir le nom de la recette.");
+      return;
+    }
+
+    setIsLoadingIA(true);
+    setIaSuccessMsg(null);
+    const result = await generateRecipeFromTitle(titleToUse.trim(), iaTitleHint);
+    if (result) {
+      setFormData(prev => ({
+        ...prev,
+        ...result,
+        nom: titleToUse.trim(),
+        image: prev.image || getDishImage(titleToUse.trim()),
+        ingredients: (result.ingredients || []).map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
+        instructions: (result.instructions || []).map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
+        estIA: true
+      }));
+      setIaSuccessMsg("✨ Recette complète générée avec succès depuis le titre !");
+      setTimeout(() => {
+        setShowIAPaste(false);
+        setIaSuccessMsg(null);
+      }, 1500);
+    } else {
+      alert("Erreur lors de la génération. Veuillez réessayer.");
+    }
+    setIsLoadingIA(false);
+  };
 
   const handleIA = async () => {
     if (!rawRecipeText) return alert("Veuillez coller le texte de la recette.");
@@ -57,6 +90,7 @@ export function RecipeFormModal({ recette, onClose, onSave, initialShowIA = fals
       setFormData(prev => ({
         ...prev,
         ...result,
+        image: prev.image || (result.nom ? getDishImage(result.nom) : ''),
         ingredients: (result.ingredients || []).map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
         instructions: (result.instructions || []).map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
         estIA: true
@@ -192,7 +226,11 @@ export function RecipeFormModal({ recette, onClose, onSave, initialShowIA = fals
     e.preventDefault();
     if (!formData.nom) return;
     if (uploadingImage) return;
-    onSave(formData as Recette);
+    const finalImage = formData.image || getDishImage(formData.nom);
+    onSave({
+      ...formData,
+      image: finalImage,
+    } as Recette);
   };
 
   return (
@@ -260,29 +298,41 @@ export function RecipeFormModal({ recette, onClose, onSave, initialShowIA = fals
                   </div>
 
                   {/* Mode switcher tabs */}
-                  <div className="grid grid-cols-2 p-1 bg-slate-800 rounded-lg text-xs font-semibold">
+                  <div className="grid grid-cols-3 p-1 bg-slate-800 rounded-lg text-xs font-semibold">
                     <button
                       type="button"
-                      onClick={() => setIaMode('photo')}
-                      className={`py-1.5 px-3 rounded-md flex items-center justify-center gap-2 transition-all ${
-                        iaMode === 'photo' 
-                          ? 'bg-emerald-600 text-white shadow-sm' 
+                      onClick={() => setIaMode('title')}
+                      className={`py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all text-[11px] ${
+                        iaMode === 'title' 
+                          ? 'bg-emerald-600 text-white shadow-sm font-bold' 
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      <Camera size={14} />
-                      <span>Analyse Photo</span>
+                      <Sparkles size={13} />
+                      <span>Par Titre</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIaMode('photo')}
+                      className={`py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all text-[11px] ${
+                        iaMode === 'photo' 
+                          ? 'bg-emerald-600 text-white shadow-sm font-bold' 
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Camera size={13} />
+                      <span>Photo</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setIaMode('text')}
-                      className={`py-1.5 px-3 rounded-md flex items-center justify-center gap-2 transition-all ${
+                      className={`py-1.5 px-2 rounded-md flex items-center justify-center gap-1.5 transition-all text-[11px] ${
                         iaMode === 'text' 
-                          ? 'bg-emerald-600 text-white shadow-sm' 
+                          ? 'bg-emerald-600 text-white shadow-sm font-bold' 
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      <FileText size={14} />
+                      <FileText size={13} />
                       <span>Texte / Lien</span>
                     </button>
                   </div>
@@ -294,7 +344,49 @@ export function RecipeFormModal({ recette, onClose, onSave, initialShowIA = fals
                     </div>
                   )}
 
-                  {iaMode === 'photo' ? (
+                  {iaMode === 'title' ? (
+                    <div className="space-y-3">
+                      <p className="text-[11px] text-slate-300 leading-relaxed">
+                        Entrez le nom d'un plat (ex: <i>Blanquette de veau, Poke bowl saumon, Tarte aux pommes</i>). L'IA rédigera les ingrédients, quantités, temps et étapes !
+                      </p>
+
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Nom du plat à générer..."
+                          value={formData.nom || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, nom: e.target.value }))}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3.5 py-2 text-white text-xs focus:ring-2 focus:ring-emerald-500/50 outline-none"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Consigne optionnelle (ex: sans lactose, pour 6 personnes, rapide...)"
+                          value={iaTitleHint}
+                          onChange={(e) => setIaTitleHint(e.target.value)}
+                          className="w-full bg-slate-800/80 border border-slate-700/80 rounded-lg px-3.5 py-2 text-slate-300 text-xs focus:ring-2 focus:ring-emerald-500/50 outline-none"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateFromTitle()}
+                        disabled={isLoadingIA || !formData.nom?.trim()}
+                        className="w-full btn-primary text-xs flex justify-center items-center gap-2 py-2.5 shadow-lg disabled:opacity-50"
+                      >
+                        {isLoadingIA ? (
+                          <>
+                            <Loader2 className="animate-spin" size={16} />
+                            <span>Génération de la recette par l'IA...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} />
+                            <span>Générer toute la recette avec l'IA</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ) : iaMode === 'photo' ? (
                     <div className="space-y-3">
                       <p className="text-[11px] text-slate-300 leading-snug">
                         Importez une photo de livre de recette, une fiche manuscrite, un plat préparé ou vos ingrédients !
