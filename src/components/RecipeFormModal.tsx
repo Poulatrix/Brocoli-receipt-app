@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { X, Plus, Trash2, Image as ImageIcon, Sparkles, Loader2, Clipboard, Camera, Upload, CheckCircle2, FileText, Wand2 } from 'lucide-react';
+import { X, Plus, Trash2, Image as ImageIcon, Sparkles, Loader2, Clipboard, Camera, Upload, CheckCircle2, FileText, Wand2, AlertCircle } from 'lucide-react';
 import { Recette, CategorieRecette, Ingredient, Instruction } from '../types';
 import { parseRecipe, parseRecipeFromImage, generateRecipeFromTitle } from '../geminiService';
 import { uploadImageToSupabase, convertAndResizeToWebp } from '../lib/supabase';
@@ -49,110 +49,143 @@ export function RecipeFormModal({ recette, onClose, onSave, initialShowIA = fals
   const [iaPhotoPrompt, setIaPhotoPrompt] = useState('');
   const [usePhotoAsCover, setUsePhotoAsCover] = useState(true);
   const [iaSuccessMsg, setIaSuccessMsg] = useState<string | null>(null);
+  const [iaErrorMsg, setIaErrorMsg] = useState<string | null>(null);
 
   const handleGenerateFromTitle = async (customTitle?: string) => {
     const titleToUse = customTitle || formData.nom;
     if (!titleToUse?.trim()) {
-      alert("Veuillez d'abord saisir le nom de la recette.");
+      setIaErrorMsg("Veuillez d'abord saisir le nom de la recette.");
       return;
     }
 
     setIsLoadingIA(true);
     setIaSuccessMsg(null);
-    const result = await generateRecipeFromTitle(titleToUse.trim(), iaTitleHint);
-    if (result) {
-      setFormData(prev => ({
-        ...prev,
-        ...result,
-        nom: titleToUse.trim(),
-        image: prev.image || getDishImage(titleToUse.trim()),
-        ingredients: (result.ingredients || []).map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
-        instructions: (result.instructions || []).map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
-        estIA: true
-      }));
-      setIaSuccessMsg("✨ Recette complète générée avec succès depuis le titre !");
-      setTimeout(() => {
-        setShowIAPaste(false);
-        setIaSuccessMsg(null);
-      }, 1500);
-    } else {
-      alert("Erreur lors de la génération. Veuillez réessayer.");
+    setIaErrorMsg(null);
+    try {
+      const result = await generateRecipeFromTitle(titleToUse.trim(), iaTitleHint);
+      if (result) {
+        setFormData(prev => ({
+          ...prev,
+          ...result,
+          nom: titleToUse.trim(),
+          image: prev.image || getDishImage(titleToUse.trim()),
+          ingredients: (result.ingredients || []).map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
+          instructions: (result.instructions || []).map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
+          estIA: true
+        }));
+        setIaSuccessMsg("✨ Recette complète générée avec succès depuis le titre !");
+        setTimeout(() => {
+          setShowIAPaste(false);
+          setIaSuccessMsg(null);
+        }, 1500);
+      } else {
+        setIaErrorMsg("Erreur lors de la génération. Veuillez réessayer.");
+      }
+    } catch (err: any) {
+      setIaErrorMsg(err?.message || "Erreur lors de la génération.");
+    } finally {
+      setIsLoadingIA(false);
     }
-    setIsLoadingIA(false);
   };
 
   const handleIA = async () => {
-    if (!rawRecipeText) return alert("Veuillez coller le texte de la recette.");
+    if (!rawRecipeText?.trim()) {
+      setIaErrorMsg("Veuillez coller le texte de la recette.");
+      return;
+    }
     setIsLoadingIA(true);
     setIaSuccessMsg(null);
-    const result = await parseRecipe(rawRecipeText);
-    if (result) {
-      setFormData(prev => ({
-        ...prev,
-        ...result,
-        image: prev.image || (result.nom ? getDishImage(result.nom) : ''),
-        ingredients: (result.ingredients || []).map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
-        instructions: (result.instructions || []).map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
-        estIA: true
-      }));
-      setIaSuccessMsg("Recette générée avec succès depuis le texte !");
-      setTimeout(() => {
-        setShowIAPaste(false);
-        setRawRecipeText('');
-        setIaSuccessMsg(null);
-      }, 1500);
-    } else {
-      alert("Erreur lors de l'analyse avec l'IA. Vérifiez le format du texte.");
+    setIaErrorMsg(null);
+    try {
+      const result = await parseRecipe(rawRecipeText);
+      if (result) {
+        setFormData(prev => ({
+          ...prev,
+          ...result,
+          image: prev.image || (result.nom ? getDishImage(result.nom) : ''),
+          ingredients: (result.ingredients || []).map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
+          instructions: (result.instructions || []).map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
+          estIA: true
+        }));
+        setIaSuccessMsg("Recette générée avec succès depuis le texte !");
+        setTimeout(() => {
+          setShowIAPaste(false);
+          setRawRecipeText('');
+          setIaSuccessMsg(null);
+        }, 1500);
+      } else {
+        setIaErrorMsg("Erreur lors de l'analyse avec l'IA. Vérifiez le format du texte.");
+      }
+    } catch (err: any) {
+      setIaErrorMsg(err?.message || "Erreur lors de l'analyse.");
+    } finally {
+      setIsLoadingIA(false);
     }
-    setIsLoadingIA(false);
   };
 
-  const handleSelectIaPhoto = (file: File) => {
+  const handleSelectIaPhoto = async (file: File) => {
     setIaPhotoFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setIaPhotoPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    setIaErrorMsg(null);
+    try {
+      // Compress and resize image to lightweight WebP/JPEG for fast upload and Gemini processing
+      const processed = await convertAndResizeToWebp(file, 1200);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setIaPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(processed.blob);
+    } catch {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setIaPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleIAPhoto = async () => {
     if (!iaPhotoFile || !iaPhotoPreview) {
-      alert("Veuillez d'abord choisir ou déposer une photo de recette / plat.");
+      setIaErrorMsg("Veuillez d'abord choisir ou déposer une photo de recette / plat.");
       return;
     }
     setIsLoadingIA(true);
     setIaSuccessMsg(null);
+    setIaErrorMsg(null);
 
-    const result = await parseRecipeFromImage(
-      iaPhotoPreview,
-      iaPhotoFile.type || 'image/jpeg',
-      iaPhotoPrompt
-    );
+    try {
+      const result = await parseRecipeFromImage(
+        iaPhotoPreview,
+        iaPhotoFile.type || 'image/jpeg',
+        iaPhotoPrompt
+      );
 
-    if (result) {
-      setFormData(prev => ({
-        ...prev,
-        ...result,
-        ingredients: (result.ingredients || []).map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
-        instructions: (result.instructions || []).map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
-        estIA: true
-      }));
+      if (result) {
+        setFormData(prev => ({
+          ...prev,
+          ...result,
+          ingredients: (result.ingredients || []).map((ing: any) => ({ ...ing, id: Math.random().toString(36).substr(2, 9) })),
+          instructions: (result.instructions || []).map((inst: any) => ({ ...inst, id: Math.random().toString(36).substr(2, 9) })),
+          estIA: true
+        }));
 
-      // Set photo as recipe image if requested
-      if (usePhotoAsCover && iaPhotoFile) {
-        processImageFile(iaPhotoFile);
+        // Set photo as recipe image if requested
+        if (usePhotoAsCover && iaPhotoFile) {
+          processImageFile(iaPhotoFile);
+        }
+
+        setIaSuccessMsg("✨ Photo analysée avec succès ! La recette a été générée.");
+        setTimeout(() => {
+          setShowIAPaste(false);
+          setIaSuccessMsg(null);
+        }, 2000);
+      } else {
+        setIaErrorMsg("L'IA n'a pas pu analyser cette photo. Essayez avec une image plus lisible ou ajoutez une consigne.");
       }
-
-      setIaSuccessMsg("✨ Photo analysée avec succès ! La recette a été générée.");
-      setTimeout(() => {
-        setShowIAPaste(false);
-        setIaSuccessMsg(null);
-      }, 2000);
-    } else {
-      alert("L'IA n'a pas pu analyser cette photo. Essayez avec une image plus lisible ou ajoutez une consigne.");
+    } catch (err: any) {
+      setIaErrorMsg(err?.message || "Erreur lors de l'analyse de l'image.");
+    } finally {
+      setIsLoadingIA(false);
     }
-    setIsLoadingIA(false);
   };
 
   const addIngredient = () => {
@@ -341,6 +374,25 @@ export function RecipeFormModal({ recette, onClose, onSave, initialShowIA = fals
                     <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-lg flex items-center gap-2 text-emerald-300 text-xs font-medium animate-pulse">
                       <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
                       <span>{iaSuccessMsg}</span>
+                    </div>
+                  )}
+
+                  {iaErrorMsg && (
+                    <div className="p-3 bg-rose-950/80 border border-rose-500/50 rounded-xl flex items-start gap-2.5 text-rose-200 text-xs">
+                      <AlertCircle size={18} className="text-rose-400 shrink-0 mt-0.5" />
+                      <div className="space-y-1 leading-relaxed">
+                        <div className="font-semibold text-rose-300">
+                          {iaErrorMsg.includes("renouvelée") || iaErrorMsg.includes("leaked") 
+                            ? "Clé API Gemini signalée comme compromise" 
+                            : "Erreur IA"}
+                        </div>
+                        <div>{iaErrorMsg}</div>
+                        {(iaErrorMsg.includes("renouvelée") || iaErrorMsg.includes("leaked")) && (
+                          <div className="text-[11px] text-rose-300/80 mt-1 pt-1 border-t border-rose-800/60">
+                            💡 Rendez-vous sur <strong>Google AI Studio</strong> (onglet <i>Get API Key</i>) pour en générer une nouvelle, puis actualisez le secret <code>GEMINI_API_KEY</code> dans les paramètres d'AI Studio.
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 

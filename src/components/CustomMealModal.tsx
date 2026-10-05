@@ -6,7 +6,7 @@ import { fr } from 'date-fns/locale';
 import { getDishImage } from '../lib/dishImages';
 import { generateRecipeFromTitle } from '../geminiService';
 import { useStore } from '../store';
-import { Recette } from '../types';
+import { Recette, SaisonRecette, CategorieRecette } from '../types';
 
 interface CustomMealModalProps {
   dishName: string;
@@ -43,8 +43,8 @@ export function CustomMealModal({
         const newRecipe: Recette = {
           id: 'rec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
           nom: generated.nom || dishName,
-          categorie: generated.categorie || 'Autre',
-          saison: generated.saison || 'toute_annee',
+          categorie: (generated.categorie as CategorieRecette) || 'Autre',
+          saison: (generated.saison as SaisonRecette) || 'toute_annee',
           image: imageUrl,
           portions: generated.portions || 4,
           prepMin: generated.prepMin || 15,
@@ -78,9 +78,9 @@ export function CustomMealModal({
       } else {
         alert("Impossible de générer automatiquement la recette. Vous pouvez l'écrire manuellement.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erreur génération recette:", err);
-      alert("Une erreur est survenue lors de la création de la recette.");
+      alert(err?.message || "Une erreur est survenue lors de la création de la recette.");
     } finally {
       setIsGenerating(false);
     }

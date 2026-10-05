@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Bell, 
@@ -124,7 +124,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
     addToShoppingList, 
     addManualShoppingItem, 
     toggleShoppingItem, 
-    deleteShoppingItem 
+    deleteShoppingItem,
+    currentUserId 
   } = useStore();
 
   // Modal States
@@ -212,6 +213,29 @@ export function HomePage({ onNavigate }: HomePageProps) {
 
   const todayMeal = getMealForDate(todayISO);
   const tomorrowMeal = getMealForDate(tomorrowISO);
+
+  // Synchronisation continue vers le cache du widget iOS (JsWidget)
+  useEffect(() => {
+    try {
+      fetch('/api/widget/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUserId || undefined,
+          date: todayISO,
+          meal: todayMeal ? {
+            nom: todayMeal.nom,
+            categorie: todayMeal.categorie,
+            image: todayMeal.image,
+            prepMin: todayMeal.prepMin,
+            cuissonMin: todayMeal.cuissonMin,
+            portions: todayMeal.portions,
+            type: todayMeal.type
+          } : null
+        })
+      }).catch(() => {});
+    } catch {}
+  }, [todayMeal, currentUserId, todayISO]);
 
   // Current week timeline (Anchored on Monday, fixed from Monday to Sunday)
   const currentMonday = useMemo(() => startOfWeek(today, { weekStartsOn: 1 }), [today]);

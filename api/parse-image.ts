@@ -1,7 +1,21 @@
+import dotenv from "dotenv";
+dotenv.config({ override: true });
+
 import { GoogleGenAI } from "@google/genai";
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest'];
+
+function getGenAI() {
+  return new GoogleGenAI({ 
+    apiKey: process.env.GEMINI_API_KEY || '',
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      }
+    }
+  });
+}
 
 export default async function handler(
   request: VercelRequest,
@@ -50,30 +64,50 @@ Retourne uniquement un objet JSON suivant ce format exact:
   ]
 }`;
 
-    const responseData = await genAI.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType || "image/jpeg",
-              data: cleanBase64,
-            }
-          },
-          {
-            text: prompt
-          }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
+    const genAI = getGenAI();
+    let responseData: any = null;
+    let lastErr: any = null;
 
-    if (!responseData.text) return response.status(500).json({ error: 'Empty response from Gemini' });
-    return response.status(200).json(JSON.parse(responseData.text));
-  } catch (error) {
+    for (const model of GEMINI_MODELS) {
+      try {
+        responseData = await genAI.models.generateContent({
+          model,
+          contents: {
+            parts: [
+              {
+                inlineData: {
+                  mimeType: mimeType || "image/jpeg",
+                  data: cleanBase64,
+                }
+              },
+              {
+                text: prompt
+              }
+            ]
+          },
+          config: {
+            responseMimeType: "application/json",
+          },
+        });
+        if (responseData?.text) break;
+      } catch (err: any) {
+        lastErr = err;
+        const isAuthOrLeaked = err?.message?.includes("leaked") || err?.message?.includes("PERMISSION_DENIED") || err?.status === 403;
+        if (isAuthOrLeaked) throw err;
+      }
+    }
+
+    if (!responseData?.text && lastErr) throw lastErr;
+    if (!responseData?.text) return response.status(200).json({ success: false, error: 'Empty response from Gemini' });
+    const cleanJson = responseData.text.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
+    const parsed = JSON.parse(cleanJson);
+    return response.status(200).json({ success: true, data: parsed, ...parsed });
+  } catch (error: any) {
     console.error("Gemini API Image Error:", error);
-    return response.status(500).json({ error: 'Failed to analyze recipe photo' });
+    const isLeakedOrAuth = error?.message?.includes("leaked") || error?.message?.includes("PERMISSION_DENIED") || error?.status === 403;
+    const userMessage = isLeakedOrAuth
+      ? "Votre clé API Gemini doit être renouvelée dans le panneau Paramètres > Secrets d'AI Studio."
+      : (error?.message || 'Failed to analyze recipe photo');
+    return response.status(200).json({ success: false, error: userMessage, isLeakedKey: isLeakedOrAuth });
   }
 }

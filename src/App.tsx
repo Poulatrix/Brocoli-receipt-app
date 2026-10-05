@@ -15,6 +15,7 @@ import { AnimatePresence } from 'motion/react';
 import { useAuth } from './lib/auth';
 import { useStore } from './store';
 import { Login } from './components/Login';
+import { syncWidgetSchedule } from './lib/widgetSync';
 
 const TABS = [
   { id: 'home', label: 'Accueil', icon: Home },
@@ -25,9 +26,20 @@ const TABS = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('home');
+  const getInitialTab = () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam && TABS.some(t => t.id === tabParam)) {
+        return tabParam;
+      }
+    } catch {}
+    return 'home';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const { user, loading: authLoading } = useAuth();
-  const { setUserId, loading: storeLoading, error: storeError, setError } = useStore();
+  const { setUserId, loading: storeLoading, error: storeError, setError, planning, recettes } = useStore();
 
   useEffect(() => {
     if (user) {
@@ -36,6 +48,13 @@ export default function App() {
       setUserId(null);
     }
   }, [user, setUserId]);
+
+  // Synchronisation continue du planning complet vers le widget iOS
+  useEffect(() => {
+    if (planning && planning.length > 0) {
+      syncWidgetSchedule(planning, recettes, user?.id).catch(() => {});
+    }
+  }, [planning, recettes, user?.id]);
 
   const renderContent = () => {
     switch (activeTab) {

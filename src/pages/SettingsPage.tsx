@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { useStore } from '../store';
 import { motion } from 'motion/react';
 import { FeedbackModal } from '../components/FeedbackModal';
+import { JsWidgetSettingsModule } from '../components/JsWidgetSettingsModule';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -62,6 +63,9 @@ export function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Module Partage Widget iOS / JsWidget */}
+        <JsWidgetSettingsModule />
 
         {/* Feedback & Bug report section */}
         <div className="p-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 rounded-3xl border border-emerald-100/80 space-y-4">

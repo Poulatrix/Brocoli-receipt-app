@@ -1,0 +1,14 @@
+{
+  "users": {},
+  "latestSchedule": {
+    "2026-09-03": {
+      "nom": "Gratin de courgettes et chèvre",
+      "categorie": "Plat",
+      "portions": 4,
+      "prepMin": 15,
+      "cuissonMin": 30,
+      "type": "custom"
+    }
+  },
+  "latestUpdated": 1788441794605
+}

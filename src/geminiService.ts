@@ -1,11 +1,72 @@
-import { GoogleGenAI } from "@google/genai";
+export interface ParsedRecipeResult {
+  nom: string;
+  categorie: string;
+  saison?: string;
+  portions?: number;
+  prepMin?: number;
+  cuissonMin?: number;
+  calories?: number;
+  ingredients?: Array<{
+    nom: string;
+    quantite?: number;
+    unite?: string;
+  }>;
+  instructions?: Array<{
+    titre?: string;
+    texte: string;
+  }>;
+  error?: string;
+}
 
-// Client-side fallback instance if /api endpoint is unavailable
-const getAiFallback = () => {
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-};
+/**
+ * Safely parse HTTP response, preventing any "Unexpected token '<'" JSON crashes
+ * and handling API error messages cleanly.
+ */
+async function safelyParseResponse(res: Response, defaultErrorMsg: string): Promise<ParsedRecipeResult> {
+  const contentType = res.headers.get("content-type") || "";
+  let json: any = null;
 
-export async function parseRecipe(rawText: string) {
+  if (contentType.includes("application/json")) {
+    try {
+      json = await res.json();
+    } catch {
+      json = null;
+    }
+  } else {
+    // If response was not JSON (e.g. proxy HTML error page from Cloud Run or gateway)
+    const rawText = await res.text().catch(() => "");
+    if (rawText.includes("leaked") || rawText.includes("PERMISSION_DENIED")) {
+      throw new Error("Votre clé API Gemini doit être renouvelée dans le panneau Paramètres > Secrets d'AI Studio.");
+    }
+    if (res.status === 413 || rawText.includes("Payload Too Large")) {
+      throw new Error("L'image est trop volumineuse pour être envoyée au serveur.");
+    }
+    throw new Error(defaultErrorMsg);
+  }
+
+  if (!json) {
+    throw new Error(defaultErrorMsg);
+  }
+
+  // Check error indicator in JSON
+  if (json.success === false || json.error) {
+    const errorMsg = json.error || defaultErrorMsg;
+    throw new Error(errorMsg);
+  }
+
+  // If payload is wrapped in { success: true, data: { ... } } or root object
+  const result: ParsedRecipeResult = json.data || json;
+  if (!result || !result.nom) {
+    throw new Error("La réponse du serveur ne contient pas de recette exploitable.");
+  }
+
+  return result;
+}
+
+/**
+ * Parses raw text recipe via server API proxy
+ */
+export async function parseRecipe(rawText: string): Promise<ParsedRecipeResult | null> {
   try {
     const res = await fetch("/api/parse", {
       method: "POST",
@@ -13,61 +74,17 @@ export async function parseRecipe(rawText: string) {
       body: JSON.stringify({ rawText }),
     });
 
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (err) {
-    console.warn("API /api/parse request failed, trying client fallback:", err);
-  }
-
-  // Fallback to direct call
-  try {
-    const ai = getAiFallback();
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: [{
-        role: 'user',
-        parts: [{
-          text: `Analyse et convertis ce texte de recette de cuisine en un objet JSON structuré en français. 
-Si le texte est succinct, développe les instructions pour qu'elles soient claires.
-
-Texte source: "${rawText}"
-
-Retourne uniquement un objet JSON suivant ce format exact:
-{
-  "nom": "Nom de la recette",
-  "categorie": "Viande | Poisson | Végétarien | Pâtes | Soupe | Dessert | Entrée | Autre",
-  "saison": "ete | hiver | toute_annee",
-  "portions": 4,
-  "prepMin": 15,
-  "cuissonMin": 20,
-  "calories": 450,
-  "ingredients": [
-    { "quantite": 200, "unite": "g", "nom": "Farine" }
-  ],
-  "instructions": [
-    { "titre": "Préparation", "texte": "Mélanger la farine..." }
-  ]
-}`
-        }]
-      }],
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    if (!response.text) {
-      throw new Error("L'IA n'a pas retourné de texte");
-    }
-
-    return JSON.parse(response.text);
-  } catch (error) {
-    console.error("Erreur lors de l'analyse texte de la recette:", error);
-    return null;
+    return await safelyParseResponse(res, "Erreur lors de l'analyse de la recette.");
+  } catch (err: any) {
+    console.error("Erreur parseRecipe:", err?.message || err);
+    throw err;
   }
 }
 
-export async function generateRecipeFromTitle(title: string, hint?: string) {
+/**
+ * Generates a recipe from a title / meal idea via server API proxy
+ */
+export async function generateRecipeFromTitle(title: string, hint?: string): Promise<ParsedRecipeResult | null> {
   try {
     const res = await fetch("/api/generate-from-title", {
       method: "POST",
@@ -75,63 +92,21 @@ export async function generateRecipeFromTitle(title: string, hint?: string) {
       body: JSON.stringify({ title, hint }),
     });
 
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (err) {
-    console.warn("API /api/generate-from-title failed, trying fallback:", err);
-  }
-
-  try {
-    const ai = getAiFallback();
-    const prompt = `Tu es un chef cuisinier expert.
-Génère une recette de cuisine complète, délicieuse, équilibrée et facile à suivre pour le plat suivant : "${title}".
-${hint ? `Consigne ou préférence spécifique : "${hint}"` : ''}
-
-Retourne UNIQUEMENT un objet JSON suivant ce format exact en français :
-{
-  "nom": "${title}",
-  "categorie": "Viande | Poisson | Végétarien | Pâtes | Soupe | Dessert | Entrée | Autre",
-  "saison": "ete | hiver | toute_annee",
-  "portions": 4,
-  "prepMin": 15,
-  "cuissonMin": 20,
-  "calories": 450,
-  "ingredients": [
-    { "quantite": 200, "unite": "g", "nom": "Farine" }
-  ],
-  "instructions": [
-    { "titre": "Étape 1", "texte": "Description claire et pédagogique..." }
-  ]
-}`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: [{
-        role: 'user',
-        parts: [{ text: prompt }]
-      }],
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    if (!response.text) {
-      throw new Error("L'IA n'a pas retourné de recette");
-    }
-
-    return JSON.parse(response.text);
-  } catch (error) {
-    console.error("Erreur lors de la génération de recette par titre:", error);
-    return null;
+    return await safelyParseResponse(res, "Erreur lors de la génération de la recette.");
+  } catch (err: any) {
+    console.error("Erreur generateRecipeFromTitle:", err?.message || err);
+    throw err;
   }
 }
 
+/**
+ * Parses recipe from an image photo via server API proxy
+ */
 export async function parseRecipeFromImage(
   imageBase64: string, 
   mimeType: string = "image/jpeg", 
   promptText?: string
-) {
+): Promise<ParsedRecipeResult | null> {
   try {
     const res = await fetch("/api/parse-image", {
       method: "POST",
@@ -139,72 +114,9 @@ export async function parseRecipeFromImage(
       body: JSON.stringify({ imageBase64, mimeType, promptText }),
     });
 
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (err) {
-    console.warn("API /api/parse-image failed, trying client fallback:", err);
-  }
-
-  // Fallback
-  try {
-    const ai = getAiFallback();
-    const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
-
-    const prompt = `Tu es un chef cuisinier expert et un numériseur de recettes.
-Analyse l'image fournie qui peut être :
-- La photo d'une recette (livre de cuisine, fiche manuscrite, magazine, écran).
-- La photo d'un plat préparé.
-- La photo d'ingrédients ou du contenu d'un frigo/placard.
-
-${promptText ? `Information ou consigne complémentaire: "${promptText}"` : ''}
-
-Identifie ou compose la recette correspondante de façon détaillée, exacte et appétissante.
-
-Retourne uniquement un objet JSON suivant ce format exact:
-{
-  "nom": "Nom du plat",
-  "categorie": "Viande | Poisson | Végétarien | Pâtes | Soupe | Dessert | Entrée | Autre",
-  "saison": "ete | hiver | toute_annee",
-  "portions": 4,
-  "prepMin": 15,
-  "cuissonMin": 20,
-  "calories": 450,
-  "ingredients": [
-    { "quantite": 200, "unite": "g", "nom": "Ingrédient" }
-  ],
-  "instructions": [
-    { "titre": "Étape 1", "texte": "Description claire de la préparation..." }
-  ]
-}`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType || "image/jpeg",
-              data: cleanBase64,
-            }
-          },
-          {
-            text: prompt
-          }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    if (!response.text) {
-      throw new Error("L'IA n'a pas pu analyser l'image.");
-    }
-
-    return JSON.parse(response.text);
-  } catch (error) {
-    console.error("Erreur lors de l'analyse d'image:", error);
-    return null;
+    return await safelyParseResponse(res, "Erreur lors de l'analyse de l'image.");
+  } catch (err: any) {
+    console.error("Erreur parseRecipeFromImage:", err?.message || err);
+    throw err;
   }
 }
