@@ -74,8 +74,6 @@ export function McpSettingsModule() {
     tools?: string[];
   } | null>(null);
 
-  if (!household) return null;
-
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const httpEndpoint = `${origin}/api/mcp`;
   const sseEndpoint = `${origin}/api/mcp/sse`;
@@ -100,6 +98,30 @@ export function McpSettingsModule() {
       2
     );
   }, [activeEndpoint, transportMode, displayedTokenForConfig]);
+
+  if (!household) {
+    return (
+      <section className="p-6 bg-[#FAF8F4] rounded-3xl border border-stone-200/90 space-y-4">
+        <div className="flex items-start gap-3.5">
+          <div className="w-11 h-11 bg-emerald-700 text-white rounded-2xl flex items-center justify-center shrink-0">
+            <Terminal size={21} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-bold text-slate-900 text-base">Connecteur MCP (Model Context Protocol)</h3>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Connectez un assistant compatible MCP via Streamable HTTP (<code className="font-mono">/api/mcp</code>) pour consulter les repas de la semaine, lire/compléter la liste de courses et suggérer des plats.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2.5 p-3.5 bg-white border border-stone-200 rounded-2xl text-xs text-slate-600">
+          <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+          <span>
+            Initialisez ou reconnectez votre Maison Familiale ci-dessus pour activer le serveur MCP et générer son jeton Bearer.
+          </span>
+        </div>
+      </section>
+    );
+  }
 
   const handleCopy = (value: string, field: 'url' | 'token' | 'config') => {
     navigator.clipboard.writeText(value);

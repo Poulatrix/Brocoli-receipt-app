@@ -242,7 +242,7 @@ export function SettingsPage() {
           </span>
         </div>
         <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-relaxed">
-          Version 2.1.0 • Supabase Cloud Sync & Storage
+          Version 2.2.0 • Supabase Cloud Sync & Storage
         </p>
       </div>
 

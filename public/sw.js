@@ -1,6 +1,6 @@
 // Configuration du Service Worker BROCOLI pour PWA (compatible iOS / iPhone)
 // Version du cache à incrémenter à chaque nouveau déploiement pour déclencher une mise à jour
-const CACHE_VERSION = 'v2.1.1';
+const CACHE_VERSION = 'v2.2.0';
 const CACHE_NAME = `brocoli-pwa-${CACHE_VERSION}`;
 
 // Ressources essentielles à pré-cacher à l'installation (sans jamais inclure sw.js)

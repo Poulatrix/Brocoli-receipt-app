@@ -21,6 +21,8 @@ interface StoreState extends AppState {
   currentUserEmail: string | null;
   household: Household | null;
   householdLoading: boolean;
+  householdError: string | null;
+  householdNeedsSetup: boolean;
 }
 
 interface StoreActions {
@@ -154,6 +156,21 @@ const getStoredHousehold = (): Household | null => {
   return null;
 };
 
+async function getHouseholdAuthHeaders(includeContentType = true): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {};
+  if (includeContentType) {
+    headers['Content-Type'] = 'application/json';
+  }
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const jwt = sessionData?.session?.access_token;
+    if (jwt) {
+      headers['Authorization'] = `Bearer ${jwt}`;
+    }
+  } catch {}
+  return headers;
+}
+
 let isSyncingMcpMirror = false;
 
 export const useStore = create<StoreState & StoreActions>()(
@@ -165,6 +182,8 @@ export const useStore = create<StoreState & StoreActions>()(
     currentUserEmail: null,
     household: getStoredHousehold(),
     householdLoading: false,
+    householdError: null,
+    householdNeedsSetup: false,
 
     setLoading: (loading) => set({ loading }),
     setError: (error) => set({ error }),
@@ -188,21 +207,41 @@ export const useStore = create<StoreState & StoreActions>()(
       const email = get().currentUserEmail || '';
       if (!userId) return null;
 
-      set({ householdLoading: true });
+      set({ householdLoading: true, householdError: null, householdNeedsSetup: false });
       try {
-        const res = await fetch(`/api/households/my?userId=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}`);
+        const headers = await getHouseholdAuthHeaders(false);
+        const res = await fetch(`/api/households/my?userId=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}`, {
+          headers,
+        });
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error("L'API Maison Familiale (/api/households/my) n'a pas répondu en JSON.");
+        }
         const data = await res.json();
         if (data.success && data.household) {
-          set({ household: data.household, householdLoading: false });
+          set({
+            household: data.household,
+            householdLoading: false,
+            householdError: null,
+            householdNeedsSetup: false,
+          });
           try {
             localStorage.setItem('mes_recettes_household', JSON.stringify(data.household));
           } catch {}
           return data.household;
         }
-      } catch (err) {
+        set({
+          householdLoading: false,
+          householdError: data?.error || "Impossible de charger votre Maison Familiale.",
+          householdNeedsSetup: Boolean(data?.needsSetup),
+        });
+      } catch (err: any) {
         console.warn("Could not sync household from backend:", err);
+        set({
+          householdLoading: false,
+          householdError: err?.message || "Serveur Maison Familiale inaccessible.",
+        });
       }
-      set({ householdLoading: false });
       return null;
     },
 
@@ -211,23 +250,32 @@ export const useStore = create<StoreState & StoreActions>()(
       const email = get().currentUserEmail || '';
       if (!userId) return { success: false, error: "Vous devez être connecté pour rejoindre une Maison." };
 
-      set({ householdLoading: true });
+      set({ householdLoading: true, householdError: null });
       try {
+        const headers = await getHouseholdAuthHeaders(true);
         const res = await fetch('/api/households/join', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ code, userId, email, nom, role })
         });
         const data = await res.json();
         if (data.success && data.household) {
-          set({ household: data.household, householdLoading: false });
+          set({
+            household: data.household,
+            householdLoading: false,
+            householdError: null,
+            householdNeedsSetup: false,
+          });
           try {
             localStorage.setItem('mes_recettes_household', JSON.stringify(data.household));
           } catch {}
           await get().syncWithSupabase();
           return { success: true };
         } else {
-          set({ householdLoading: false });
+          set({
+            householdLoading: false,
+            householdNeedsSetup: Boolean(data?.needsSetup),
+          });
           return { success: false, error: data.error || "Impossible de rejoindre cette Maison." };
         }
       } catch (err: any) {
@@ -242,9 +290,10 @@ export const useStore = create<StoreState & StoreActions>()(
       if (!household || !userId) return;
 
       try {
+        const headers = await getHouseholdAuthHeaders(true);
         const res = await fetch('/api/households/update', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ householdId: household.id, userId, ...updates })
         });
         const data = await res.json();
@@ -265,9 +314,10 @@ export const useStore = create<StoreState & StoreActions>()(
       if (!household || !userId) return;
 
       try {
+        const headers = await getHouseholdAuthHeaders(true);
         const res = await fetch('/api/households/member/update', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ householdId: household.id, userId, targetMemberId, ...updates })
         });
         const data = await res.json();
@@ -288,9 +338,10 @@ export const useStore = create<StoreState & StoreActions>()(
       if (!household || !userId) return;
 
       try {
+        const headers = await getHouseholdAuthHeaders(true);
         const res = await fetch('/api/households/member/remove', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ householdId: household.id, userId, targetMemberId })
         });
         const data = await res.json();
@@ -312,9 +363,10 @@ export const useStore = create<StoreState & StoreActions>()(
       if (!household || !userId) return null;
 
       try {
+        const headers = await getHouseholdAuthHeaders(true);
         const res = await fetch('/api/households/regenerate-code', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ householdId: household.id, userId })
         });
         const data = await res.json();
@@ -337,15 +389,16 @@ export const useStore = create<StoreState & StoreActions>()(
       if (!household || !userId) return;
 
       try {
+        const headers = await getHouseholdAuthHeaders(true);
         await fetch('/api/households/leave', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ householdId: household.id, userId })
         });
         try {
           localStorage.removeItem('mes_recettes_household');
         } catch {}
-        set({ household: null });
+        set({ household: null, householdError: null, householdNeedsSetup: false });
         await get().syncHousehold();
         await get().syncWithSupabase();
       } catch (err) {
@@ -422,9 +475,10 @@ export const useStore = create<StoreState & StoreActions>()(
       isSyncingMcpMirror = true;
       try {
         const { recettes, planning, courses } = get();
+        const headers = await getHouseholdAuthHeaders(true);
         const res = await fetch('/api/households/mcp/sync', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             householdId: household.id,
             userId,
@@ -503,9 +557,10 @@ export const useStore = create<StoreState & StoreActions>()(
         }
 
         if (ackIds.length > 0) {
+          const ackHeaders = await getHouseholdAuthHeaders(true);
           await fetch('/api/households/mcp/ack', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: ackHeaders,
             body: JSON.stringify({ householdId: household.id, userId, mutationIds: ackIds })
           });
         }

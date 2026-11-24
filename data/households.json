@@ -1,3 +1,109 @@
 {
-  "households": {}
+  "households": {
+    "house_1795547259825_ingue": {
+      "id": "house_1795547259825_ingue",
+      "nom": "Maison hubert.n",
+      "codeInvitation": "MAISON-YJS8",
+      "createurUserId": "ab50a5ee-4a8c-4190-bd6a-ac387e1dd9a3",
+      "dateCreation": "2026-11-24T19:07:39.825Z",
+      "roleCompetencesPreset": {
+        "chef": {
+          "voir_recettes": true,
+          "creer_recettes": true,
+          "editer_recettes": true,
+          "supprimer_recettes": true,
+          "utiliser_ia": true,
+          "gerer_planning": true,
+          "suggerer_repas": true,
+          "gerer_courses": true,
+          "cocher_courses": true,
+          "vider_courses": true,
+          "inviter_membres": true,
+          "gerer_maison": true
+        },
+        "cuisinier": {
+          "voir_recettes": true,
+          "creer_recettes": true,
+          "editer_recettes": true,
+          "supprimer_recettes": false,
+          "utiliser_ia": true,
+          "gerer_planning": true,
+          "suggerer_repas": true,
+          "gerer_courses": true,
+          "cocher_courses": true,
+          "vider_courses": true,
+          "inviter_membres": true,
+          "gerer_maison": false
+        },
+        "commis": {
+          "voir_recettes": true,
+          "creer_recettes": false,
+          "editer_recettes": false,
+          "supprimer_recettes": false,
+          "utiliser_ia": false,
+          "gerer_planning": false,
+          "suggerer_repas": true,
+          "gerer_courses": true,
+          "cocher_courses": true,
+          "vider_courses": false,
+          "inviter_membres": false,
+          "gerer_maison": false
+        },
+        "enfant": {
+          "voir_recettes": true,
+          "creer_recettes": false,
+          "editer_recettes": false,
+          "supprimer_recettes": false,
+          "utiliser_ia": false,
+          "gerer_planning": false,
+          "suggerer_repas": true,
+          "gerer_courses": false,
+          "cocher_courses": true,
+          "vider_courses": false,
+          "inviter_membres": false,
+          "gerer_maison": false
+        },
+        "custom": {
+          "voir_recettes": true,
+          "creer_recettes": false,
+          "editer_recettes": false,
+          "supprimer_recettes": false,
+          "utiliser_ia": false,
+          "gerer_planning": false,
+          "suggerer_repas": true,
+          "gerer_courses": true,
+          "cocher_courses": true,
+          "vider_courses": false,
+          "inviter_membres": false,
+          "gerer_maison": false
+        }
+      },
+      "membres": [
+        {
+          "id": "mem_1795547259825",
+          "userId": "ab50a5ee-4a8c-4190-bd6a-ac387e1dd9a3",
+          "nom": "hubert.n",
+          "email": "hubert.n@outlook.com",
+          "avatar": "👑",
+          "role": "chef",
+          "competences": {
+            "voir_recettes": true,
+            "creer_recettes": true,
+            "editer_recettes": true,
+            "supprimer_recettes": true,
+            "utiliser_ia": true,
+            "gerer_planning": true,
+            "suggerer_repas": true,
+            "gerer_courses": true,
+            "cocher_courses": true,
+            "vider_courses": true,
+            "inviter_membres": true,
+            "gerer_maison": true
+          },
+          "dateRejoint": "2026-11-24T19:07:39.825Z",
+          "estCreateur": true
+        }
+      ]
+    }
+  }
 }

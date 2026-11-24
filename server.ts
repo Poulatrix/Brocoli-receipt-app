@@ -956,6 +956,35 @@ async function startServer() {
     }
   });
 
+  // 5b. Leave a household
+  app.post("/api/households/leave", (req, res) => {
+    try {
+      const { householdId, userId } = req.body;
+      const household = householdCache[householdId];
+      if (!household) {
+        return res.status(404).json({ success: false, error: "Maison introuvable." });
+      }
+
+      const target = household.membres.find(m => m.userId === userId);
+      if (!target) {
+        return res.json({ success: true });
+      }
+      if (target.estCreateur && household.membres.length > 1) {
+        return res.status(400).json({ success: false, error: "Le créateur ne peut pas quitter la maison tant qu'il y a d'autres membres." });
+      }
+
+      household.membres = household.membres.filter(m => m.userId !== userId);
+      if (household.membres.length === 0) {
+        delete householdCache[householdId];
+      }
+      saveHouseholds();
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("Error leaving household:", err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // 6. Regenerate household invitation code
   app.post("/api/households/regenerate-code", (req, res) => {
     try {
