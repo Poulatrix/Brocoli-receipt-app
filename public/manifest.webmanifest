@@ -1,0 +1,31 @@
+{
+  "id": "/",
+  "name": "BROCOLI - Receipt App",
+  "short_name": "BROCOLI",
+  "description": "Votre compagnon cuisine malin",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#22c55e",
+  "background_color": "#F6F4EE",
+  "icons": [
+    {
+      "src": "/logo_brocoli.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo_brocoli.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-2.png",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ]
+}

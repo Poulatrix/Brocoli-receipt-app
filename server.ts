@@ -477,6 +477,15 @@ async function startServer() {
   app.set('trust proxy', true);
   app.use(express.json({ limit: '20mb' }));
 
+  // Empêcher la mise en cache HTTP de /sw.js (indispensable sur iOS Safari)
+  app.use('/sw.js', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Service-Worker-Allowed', '/');
+    next();
+  });
+
   // ========================================================
   // WIDGET WEB / JS-WIDGET ENDPOINTS (Villy21/JsWidget)
   // ========================================================

@@ -7,6 +7,7 @@ import { FeedbackModal } from '../components/FeedbackModal';
 import { JsWidgetSettingsModule } from '../components/JsWidgetSettingsModule';
 import { McpSettingsModule } from '../components/McpSettingsModule';
 import { HouseholdSection } from '../components/HouseholdSection';
+import { AppUpdateSection } from '../components/AppUpdateSection';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -44,7 +45,7 @@ export function SettingsPage() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="space-y-6 max-w-2xl mx-auto pb-24"
+      className="space-y-6 max-w-2xl mx-auto pb-24 pwa-safe-area-bottom"
     >
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-slate-900 px-1">Paramètres</h1>
@@ -74,6 +75,9 @@ export function SettingsPage() {
 
         {/* Serveur MCP (Model Context Protocol) */}
         <McpSettingsModule />
+
+        {/* Mise à jour PWA (Service Worker) */}
+        <AppUpdateSection />
 
         {/* Feedback & Bug report section */}
         <div className="p-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 rounded-3xl border border-emerald-100/80 space-y-4">

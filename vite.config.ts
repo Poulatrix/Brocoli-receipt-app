@@ -2,7 +2,6 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
-import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
@@ -10,34 +9,6 @@ export default defineConfig(({mode}) => {
     plugins: [
       react(), 
       tailwindcss(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['icon.jpg', 'favicon.ico', 'apple-touch-icon.png'],
-        manifest: {
-          name: 'BROCOLI - Receipt App',
-          short_name: 'BROCOLI',
-          description: 'Votre compagnon cuisine malin',
-          theme_color: '#22c55e',
-          icons: [
-            {
-              src: 'logo_brocoli.jpg',
-              sizes: '192x192',
-              type: 'image/jpeg'
-            },
-            {
-              src: 'logo_brocoli.jpg',
-              sizes: '512x512',
-              type: 'image/jpeg'
-            },
-            {
-              src: 'logo_brocoli.jpg',
-              sizes: '512x512',
-              type: 'image/jpeg',
-              purpose: 'any maskable'
-            }
-          ]
-        }
-      })
     ],
     resolve: {
       alias: {

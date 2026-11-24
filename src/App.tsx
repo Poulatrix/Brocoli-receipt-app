@@ -17,6 +17,7 @@ import { useStore } from './store';
 import { Login } from './components/Login';
 import { syncWidgetSchedule } from './lib/widgetSync';
 import { HouseholdJoinModal } from './components/HouseholdJoinModal';
+import { ServiceWorkerUpdateProvider } from './contexts/ServiceWorkerUpdateContext';
 
 const TABS = [
   { id: 'home', label: 'Accueil', icon: Home },
@@ -26,7 +27,7 @@ const TABS = [
   { id: 'settings', label: 'Paramètres', icon: Settings },
 ];
 
-export default function App() {
+function AppContent() {
   const getInitialTab = () => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -196,6 +197,15 @@ export default function App() {
         )}
       </main>
     </div>
+  );
+}
+
+// Le Provider est monté une seule fois tout en haut de l'arbre React dans App
+export default function App() {
+  return (
+    <ServiceWorkerUpdateProvider>
+      <AppContent />
+    </ServiceWorkerUpdateProvider>
   );
 }
 
