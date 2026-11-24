@@ -5,6 +5,8 @@ import { useStore } from '../store';
 import { motion } from 'motion/react';
 import { FeedbackModal } from '../components/FeedbackModal';
 import { JsWidgetSettingsModule } from '../components/JsWidgetSettingsModule';
+import { McpSettingsModule } from '../components/McpSettingsModule';
+import { HouseholdSection } from '../components/HouseholdSection';
 
 export function SettingsPage() {
   const { user, signOut } = useAuth();
@@ -64,8 +66,14 @@ export function SettingsPage() {
           </div>
         </div>
 
+        {/* Espace Familial & Matrice de compétences */}
+        <HouseholdSection />
+
         {/* Module Partage Widget iOS / JsWidget */}
         <JsWidgetSettingsModule />
+
+        {/* Serveur MCP (Model Context Protocol) */}
+        <McpSettingsModule />
 
         {/* Feedback & Bug report section */}
         <div className="p-6 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 rounded-3xl border border-emerald-100/80 space-y-4">

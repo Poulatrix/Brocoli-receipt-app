@@ -1,11 +1,26 @@
 import { create } from 'zustand';
-import { Recette, PlanningEntry, ShoppingItem, AppState } from './types';
+import { 
+  Recette, 
+  PlanningEntry, 
+  ShoppingItem, 
+  AppState, 
+  Household, 
+  HouseholdMember, 
+  HouseholdRole, 
+  HouseholdCompetenceKey, 
+  HouseholdCompetences,
+  McpPendingMutation,
+  DEFAULT_ROLE_COMPETENCES
+} from './types';
 import { supabase, uploadImageToSupabase } from './lib/supabase';
 
 interface StoreState extends AppState {
   loading: boolean;
   error: string | null;
   currentUserId: string | null;
+  currentUserEmail: string | null;
+  household: Household | null;
+  householdLoading: boolean;
 }
 
 interface StoreActions {
@@ -13,7 +28,21 @@ interface StoreActions {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setUserId: (userId: string | null) => void;
+  setUserData: (userId: string | null, email?: string | null) => void;
   syncWithSupabase: () => Promise<void>;
+  
+  // Maison & Compétences familiales
+  syncHousehold: () => Promise<Household | null>;
+  joinHousehold: (code: string, role?: HouseholdRole, nom?: string) => Promise<{ success: boolean; error?: string }>;
+  updateHouseholdInfo: (updates: { nom?: string; roleCompetencesPreset?: Record<HouseholdRole, HouseholdCompetences> }) => Promise<void>;
+  updateHouseholdMember: (targetMemberId: string, updates: { role?: HouseholdRole; competences?: Partial<HouseholdCompetences>; nom?: string; avatar?: string }) => Promise<void>;
+  removeHouseholdMember: (targetMemberId: string) => Promise<void>;
+  regenerateHouseholdCode: () => Promise<string | null>;
+  leaveHousehold: () => Promise<void>;
+  hasCompetence: (key: HouseholdCompetenceKey) => boolean;
+  getCurrentMember: () => HouseholdMember | null;
+  configureMcp: (updates: { enabled?: boolean; boundUserId?: string; regenerateToken?: boolean }) => Promise<{ success: boolean; token?: string; error?: string }>;
+  syncMcpMirror: () => Promise<void>;
   
   // Recettes
   addRecette: (recette: Recette) => Promise<void>;
@@ -117,35 +146,399 @@ async function saveRecipeToDatabase(finalRecette: Recette, userId: string) {
   }
 }
 
+const getStoredHousehold = (): Household | null => {
+  try {
+    const raw = localStorage.getItem('mes_recettes_household');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+};
+
+let isSyncingMcpMirror = false;
+
 export const useStore = create<StoreState & StoreActions>()(
   (set, get) => ({
     ...initialData,
     loading: false,
     error: null,
     currentUserId: null,
+    currentUserEmail: null,
+    household: getStoredHousehold(),
+    householdLoading: false,
 
     setLoading: (loading) => set({ loading }),
     setError: (error) => set({ error }),
     setUserId: (userId) => {
       set({ currentUserId: userId });
-      if (userId) get().syncWithSupabase();
+      if (userId) {
+        get().syncHousehold();
+        get().syncWithSupabase();
+      }
+    },
+    setUserData: (userId, email) => {
+      set({ currentUserId: userId, currentUserEmail: email ?? null });
+      if (userId) {
+        get().syncHousehold();
+        get().syncWithSupabase();
+      }
+    },
+
+    syncHousehold: async () => {
+      const userId = get().currentUserId;
+      const email = get().currentUserEmail || '';
+      if (!userId) return null;
+
+      set({ householdLoading: true });
+      try {
+        const res = await fetch(`/api/households/my?userId=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}`);
+        const data = await res.json();
+        if (data.success && data.household) {
+          set({ household: data.household, householdLoading: false });
+          try {
+            localStorage.setItem('mes_recettes_household', JSON.stringify(data.household));
+          } catch {}
+          return data.household;
+        }
+      } catch (err) {
+        console.warn("Could not sync household from backend:", err);
+      }
+      set({ householdLoading: false });
+      return null;
+    },
+
+    joinHousehold: async (code, role = 'cuisinier', nom) => {
+      const userId = get().currentUserId;
+      const email = get().currentUserEmail || '';
+      if (!userId) return { success: false, error: "Vous devez être connecté pour rejoindre une Maison." };
+
+      set({ householdLoading: true });
+      try {
+        const res = await fetch('/api/households/join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, userId, email, nom, role })
+        });
+        const data = await res.json();
+        if (data.success && data.household) {
+          set({ household: data.household, householdLoading: false });
+          try {
+            localStorage.setItem('mes_recettes_household', JSON.stringify(data.household));
+          } catch {}
+          await get().syncWithSupabase();
+          return { success: true };
+        } else {
+          set({ householdLoading: false });
+          return { success: false, error: data.error || "Impossible de rejoindre cette Maison." };
+        }
+      } catch (err: any) {
+        set({ householdLoading: false });
+        return { success: false, error: err.message || "Erreur de connexion." };
+      }
+    },
+
+    updateHouseholdInfo: async (updates) => {
+      const household = get().household;
+      const userId = get().currentUserId;
+      if (!household || !userId) return;
+
+      try {
+        const res = await fetch('/api/households/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ householdId: household.id, userId, ...updates })
+        });
+        const data = await res.json();
+        if (data.success && data.household) {
+          set({ household: data.household });
+          try {
+            localStorage.setItem('mes_recettes_household', JSON.stringify(data.household));
+          } catch {}
+        }
+      } catch (err) {
+        console.error("Failed to update household:", err);
+      }
+    },
+
+    updateHouseholdMember: async (targetMemberId, updates) => {
+      const household = get().household;
+      const userId = get().currentUserId;
+      if (!household || !userId) return;
+
+      try {
+        const res = await fetch('/api/households/member/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ householdId: household.id, userId, targetMemberId, ...updates })
+        });
+        const data = await res.json();
+        if (data.success && data.household) {
+          set({ household: data.household });
+          try {
+            localStorage.setItem('mes_recettes_household', JSON.stringify(data.household));
+          } catch {}
+        }
+      } catch (err) {
+        console.error("Failed to update household member:", err);
+      }
+    },
+
+    removeHouseholdMember: async (targetMemberId) => {
+      const household = get().household;
+      const userId = get().currentUserId;
+      if (!household || !userId) return;
+
+      try {
+        const res = await fetch('/api/households/member/remove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ householdId: household.id, userId, targetMemberId })
+        });
+        const data = await res.json();
+        if (data.success && data.household) {
+          set({ household: data.household });
+          try {
+            localStorage.setItem('mes_recettes_household', JSON.stringify(data.household));
+          } catch {}
+          await get().syncWithSupabase();
+        }
+      } catch (err) {
+        console.error("Failed to remove household member:", err);
+      }
+    },
+
+    regenerateHouseholdCode: async () => {
+      const household = get().household;
+      const userId = get().currentUserId;
+      if (!household || !userId) return null;
+
+      try {
+        const res = await fetch('/api/households/regenerate-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ householdId: household.id, userId })
+        });
+        const data = await res.json();
+        if (data.success && data.household) {
+          set({ household: data.household });
+          try {
+            localStorage.setItem('mes_recettes_household', JSON.stringify(data.household));
+          } catch {}
+          return data.codeInvitation;
+        }
+      } catch (err) {
+        console.error("Failed to regenerate code:", err);
+      }
+      return null;
+    },
+
+    leaveHousehold: async () => {
+      const household = get().household;
+      const userId = get().currentUserId;
+      if (!household || !userId) return;
+
+      try {
+        await fetch('/api/households/leave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ householdId: household.id, userId })
+        });
+        try {
+          localStorage.removeItem('mes_recettes_household');
+        } catch {}
+        set({ household: null });
+        await get().syncHousehold();
+        await get().syncWithSupabase();
+      } catch (err) {
+        console.error("Failed to leave household:", err);
+      }
+    },
+
+    hasCompetence: (key) => {
+      const household = get().household;
+      const userId = get().currentUserId;
+      if (!household || !userId) return true;
+
+      const member = household.membres.find(m => m.userId === userId);
+      if (!member) return true;
+      if (member.estCreateur || member.role === 'chef') return true;
+
+      if (member.competences && member.competences[key] !== undefined) {
+        return Boolean(member.competences[key]);
+      }
+
+      const role = member.role || 'cuisinier';
+      const roleDefaults = DEFAULT_ROLE_COMPETENCES[role] || DEFAULT_ROLE_COMPETENCES.cuisinier;
+      return Boolean(roleDefaults[key] ?? true);
+    },
+
+    getCurrentMember: () => {
+      const household = get().household;
+      const userId = get().currentUserId;
+      if (!household || !userId) return null;
+      return household.membres.find(m => m.userId === userId) || null;
+    },
+
+    configureMcp: async (updates) => {
+      const household = get().household;
+      const userId = get().currentUserId;
+      if (!household || !userId) {
+        return { success: false, error: "Vous devez être connecté à une Maison." };
+      }
+
+      try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const jwt = sessionData?.session?.access_token;
+          if (jwt) {
+            headers['Authorization'] = `Bearer ${jwt}`;
+          }
+        } catch {}
+
+        const res = await fetch('/api/households/mcp/configure', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ householdId: household.id, userId, ...updates })
+        });
+        const data = await res.json();
+        if (data.success && data.household) {
+          set({ household: data.household });
+          try {
+            localStorage.setItem('mes_recettes_household', JSON.stringify(data.household));
+          } catch {}
+          return { success: true, token: data.token };
+        }
+        return { success: false, error: data.error || "Impossible de mettre à jour le serveur MCP." };
+      } catch (err: any) {
+        return { success: false, error: err?.message || "Erreur réseau lors de la configuration MCP." };
+      }
+    },
+
+    syncMcpMirror: async () => {
+      const household = get().household;
+      const userId = get().currentUserId;
+      if (!household || !userId || isSyncingMcpMirror) return;
+
+      isSyncingMcpMirror = true;
+      try {
+        const { recettes, planning, courses } = get();
+        const res = await fetch('/api/households/mcp/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            householdId: household.id,
+            userId,
+            recettes,
+            planning,
+            courses,
+          })
+        });
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.pendingMutations) || data.pendingMutations.length === 0) {
+          return;
+        }
+
+        const ackIds: string[] = [];
+        const mutations: McpPendingMutation[] = data.pendingMutations;
+
+        for (const mut of mutations) {
+          try {
+            if (mut.type === 'add_shopping_items' && Array.isArray(mut.payload?.items)) {
+              const createdItems: ShoppingItem[] = Array.isArray(mut.payload.createdItems) ? mut.payload.createdItems : [];
+              const currentCourses = get().courses;
+              const newItemsToInsert: ShoppingItem[] = [];
+              const mergedIngredients: { quantite: number; unite: string; nom: string }[] = [];
+
+              for (const raw of mut.payload.items) {
+                const matchCreated = createdItems.find(
+                  ci => ci.nom.toLowerCase() === String(raw.nom).toLowerCase() &&
+                        (ci.unite || '').toLowerCase() === String(raw.unite || '').toLowerCase()
+                );
+                const alreadyInStore = currentCourses.some(
+                  c => !c.achete &&
+                       c.nom.toLowerCase() === String(raw.nom).toLowerCase() &&
+                       (c.unite || '').toLowerCase() === String(raw.unite || '').toLowerCase()
+                );
+                if (!alreadyInStore && matchCreated && !currentCourses.some(c => c.id === matchCreated.id)) {
+                  newItemsToInsert.push(matchCreated);
+                } else {
+                  mergedIngredients.push({
+                    quantite: Number(raw.quantite) || 1,
+                    unite: String(raw.unite || ''),
+                    nom: String(raw.nom),
+                  });
+                }
+              }
+
+              if (newItemsToInsert.length > 0) {
+                set({ courses: [...get().courses, ...newItemsToInsert] });
+                const { error } = await supabase
+                  .from('shopping_items')
+                  .insert(newItemsToInsert.map(it => ({ ...it, user_id: userId })));
+                if (error) console.warn("MCP pending shopping insert fallback:", error.message);
+              }
+              if (mergedIngredients.length > 0) {
+                await get().addToShoppingList(mergedIngredients);
+              }
+              ackIds.push(mut.id);
+            } else if (mut.type === 'toggle_shopping_item' && mut.payload) {
+              const target =
+                get().courses.find(c => c.id === mut.payload.id) ||
+                get().courses.find(c => c.nom.toLowerCase() === String(mut.payload.nom || '').toLowerCase());
+              if (target) {
+                await get().updateShoppingItem(target.id, { achete: Boolean(mut.payload.achete) });
+              }
+              ackIds.push(mut.id);
+            } else if (mut.type === 'suggest_meal' && mut.payload?.date) {
+              await get().setPlanningEntry(
+                mut.payload.date,
+                mut.payload.recetteId ?? null,
+                mut.payload.suggestionLibre ?? null
+              );
+              ackIds.push(mut.id);
+            }
+          } catch (mutErr) {
+            console.warn("Could not apply pending MCP mutation:", mut.id, mutErr);
+          }
+        }
+
+        if (ackIds.length > 0) {
+          await fetch('/api/households/mcp/ack', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ householdId: household.id, userId, mutationIds: ackIds })
+          });
+        }
+      } catch (err) {
+        console.warn("MCP mirror sync failed:", err);
+      } finally {
+        isSyncingMcpMirror = false;
+      }
     },
 
     syncWithSupabase: async () => {
       const userId = get().currentUserId;
+      const household = get().household;
+      const memberIds = household && household.membres && household.membres.length > 0
+        ? Array.from(new Set([userId, ...household.membres.map(m => m.userId)].filter(Boolean)))
+        : (userId ? [userId] : []);
 
       set({ loading: true });
       try {
-        const recipeQuery = userId 
-          ? supabase.from('recipes').select('*').or(`user_id.eq.${userId},user_id.is.null`)
+        const idFilter = memberIds.length > 0
+          ? `${memberIds.map(id => `user_id.eq.${id}`).join(',')},user_id.is.null`
+          : 'user_id.is.null';
+
+        const recipeQuery = memberIds.length > 0 
+          ? supabase.from('recipes').select('*').or(idFilter)
           : supabase.from('recipes').select('*').is('user_id', null);
 
-        const planningQuery = userId
-          ? supabase.from('planning').select('*').or(`user_id.eq.${userId},user_id.is.null`)
+        const planningQuery = memberIds.length > 0
+          ? supabase.from('planning').select('*').or(idFilter)
           : supabase.from('planning').select('*').is('user_id', null);
 
-        const shoppingQuery = userId
-          ? supabase.from('shopping_items').select('*').or(`user_id.eq.${userId},user_id.is.null`)
+        const shoppingQuery = memberIds.length > 0
+          ? supabase.from('shopping_items').select('*').or(idFilter)
           : supabase.from('shopping_items').select('*').is('user_id', null);
 
         const [recipesRes, planningRes, shoppingRes] = await Promise.all([

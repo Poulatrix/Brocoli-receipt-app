@@ -5,7 +5,21 @@ import { useStore } from '../store';
 import { ShoppingItem } from '../types';
 
 export function ShoppingListPage() {
-  const { courses, toggleShoppingItem, deleteShoppingItem, updateShoppingItem, clearShoppingList, clearBoughtItems, addManualShoppingItem } = useStore();
+  const { 
+    courses, 
+    toggleShoppingItem, 
+    deleteShoppingItem, 
+    updateShoppingItem, 
+    clearShoppingList, 
+    clearBoughtItems, 
+    addManualShoppingItem,
+    hasCompetence 
+  } = useStore();
+
+  const canManageShopping = hasCompetence('gerer_courses');
+  const canCheckShopping = hasCompetence('cocher_courses');
+  const canClearShopping = hasCompetence('vider_courses');
+
   const [newItemName, setNewItemName] = useState('');
   const [newItemQty, setNewItemQty] = useState<number>(1);
   const [newItemUnit, setNewItemUnit] = useState('');
@@ -17,6 +31,10 @@ export function ShoppingListPage() {
 
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageShopping) {
+      alert("Ajout d'articles restreint par la matrice de compétences de la Maison.");
+      return;
+    }
     if (!newItemName.trim()) return;
     addManualShoppingItem({
       nom: newItemName,
@@ -301,26 +319,33 @@ export function ShoppingListPage() {
           >
             <Printer size={18} />
           </button>
-          <button 
-            type="button"
-            onClick={() => setShowConfirm({ type: 'all', visible: true })}
-            className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-colors shadow-sm"
-            title="Tout effacer"
-          >
-            <Trash2 size={18} />
-          </button>
+          {canClearShopping && (
+            <button 
+              type="button"
+              onClick={() => setShowConfirm({ type: 'all', visible: true })}
+              className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-colors shadow-sm"
+              title="Tout effacer"
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
         </div>
       </div>
 
-      <form onSubmit={handleAddItem} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-4 md:items-end mb-10 transition-all">
+      <form onSubmit={handleAddItem} className={`bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-4 md:items-end mb-10 transition-all ${
+        !canManageShopping ? 'opacity-60 bg-slate-50/50' : ''
+      }`}>
         <div className="flex-1 min-w-[200px]">
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Article</label>
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+            Article {!canManageShopping && "(Ajout réservé au Chef/Cuisinier)"}
+          </label>
           <input 
             type="text" 
-            placeholder="Ajouter un article (ex: Pommes)..."
+            disabled={!canManageShopping}
+            placeholder={canManageShopping ? "Ajouter un article (ex: Pommes)..." : "Ajout réservé selon la matrice de compétences..."}
             value={newItemName || ''}
             onChange={(e) => setNewItemName(e.target.value)}
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-sm font-medium disabled:cursor-not-allowed"
           />
         </div>
         <div className="w-24">
@@ -373,7 +398,7 @@ export function ShoppingListPage() {
                   >
                     <td className="px-3 md:px-6 py-2 md:py-4 text-center">
                       <button 
-                        onClick={() => toggleShoppingItem(item.id)}
+                        onClick={() => canCheckShopping ? toggleShoppingItem(item.id) : alert("Action de cocher restreinte par la matrice de compétences.")}
                         className={`transition-colors flex justify-center w-full ${item.achete ? 'text-emerald-500' : 'text-slate-200 hover:text-slate-400'}`}
                         title={item.achete ? 'Marquer comme non acheté' : 'Marquer comme acheté'}
                       >
@@ -444,13 +469,15 @@ export function ShoppingListPage() {
                             >
                               <Plus size={16} className="rotate-45" />
                             </button>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); deleteShoppingItem(item.id); }}
-                              className="p-1.5 text-slate-300 hover:text-red-500 sm:opacity-0 group-hover:opacity-100 transition-all rounded-lg"
-                              title="Supprimer"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            {canManageShopping && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); deleteShoppingItem(item.id); }}
+                                className="p-1.5 text-slate-300 hover:text-red-500 sm:opacity-0 group-hover:opacity-100 transition-all rounded-lg"
+                                title="Supprimer"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
                           </>
                         )}
                       </div>

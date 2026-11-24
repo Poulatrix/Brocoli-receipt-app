@@ -34,9 +34,16 @@ import { CustomMealModal } from '../components/CustomMealModal';
 import { RecipeFormModal } from '../components/RecipeFormModal';
 
 export function PlanningPage() {
-  const { recettes, planning, setPlanningEntry, addRecette, addToShoppingList } = useStore();
+  const { recettes, planning, setPlanningEntry, addRecette, addToShoppingList, hasCompetence, getCurrentMember, household } = useStore();
+  const canManagePlanning = hasCompetence('gerer_planning');
+  const canSuggestMeals = hasCompetence('suggerer_repas');
+  const currentMember = getCurrentMember();
+
   const [isAssigning, setIsAssigning] = useState<{ date: string } | null>(null);
   const [selectedSuggest, setSelectedSuggest] = useState<PlanningEntry | null>(null);
+  const [suggestTargetDateModal, setSuggestTargetDateModal] = useState<PlanningEntry | null>(null);
+  const [permissionInfoModal, setPermissionInfoModal] = useState<{ title: string; message: string } | null>(null);
+  const [suggestPreferredDay, setSuggestPreferredDay] = useState<string>('Sans préférence');
   const [activeCustomMeal, setActiveCustomMeal] = useState<{ dishName: string; dateStr: string } | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formRecipeInitial, setFormRecipeInitial] = useState<Partial<Recette> | null>(null);
@@ -165,6 +172,7 @@ export function PlanningPage() {
   };
 
   const handleDragStart = (e: React.DragEvent, date: string) => {
+    if (!canManagePlanning) return;
     setDraggedDate(date);
     e.dataTransfer.setData('text/plain', date);
     e.dataTransfer.effectAllowed = 'move';
@@ -184,11 +192,13 @@ export function PlanningPage() {
   };
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (!canManagePlanning) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDrop = async (e: React.DragEvent, targetDate: string) => {
+    if (!canManagePlanning) return;
     e.preventDefault();
     const sourceDate = e.dataTransfer.getData('text/plain');
     if (!sourceDate || sourceDate === targetDate) return;
@@ -219,18 +229,43 @@ export function PlanningPage() {
     return (
       <div 
         key={dateStr}
-        draggable={!!(recette || entry?.suggestionLibre)}
+        draggable={canManagePlanning && !!(recette || entry?.suggestionLibre)}
         onDragStart={(e) => handleDragStart(e, dateStr)}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
         onDrop={(e) => handleDrop(e, dateStr)}
         onClick={() => {
           if (selectedSuggest) {
+            if (!canManagePlanning) {
+              setPermissionInfoModal({
+                title: "Planning réservé au Chef",
+                message: "Vous avez la compétence 'Suggérer des plats'. Pour intégrer et valider directement ce repas dans le planning officiel, le Chef ou un membre ayant le droit 'Gérer le Planning' doit le valider."
+              });
+              return;
+            }
             handleAssignSuggestToDate(dateStr);
           } else if (entry?.suggestionLibre) {
             setActiveCustomMeal({ dishName: entry.suggestionLibre, dateStr });
+          } else if (recette) {
+            if (canManagePlanning) {
+              setIsAssigning({ date: dateStr });
+            }
           } else {
-            setIsAssigning({ date: dateStr });
+            // Empty slot
+            if (canManagePlanning) {
+              setIsAssigning({ date: dateStr });
+            } else if (canSuggestMeals) {
+              // Can suggest for this specific day
+              const dayName = format(day, 'EEEE', { locale: fr });
+              const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+              setSuggestPreferredDay(capitalizedDay);
+              setIsAssigning({ date: 'suggest' });
+            } else {
+              setPermissionInfoModal({
+                title: "Accès limité",
+                message: "Votre rôle dans la Maison ne vous permet pas de planifier ou de suggérer des repas. Consultez la matrice de compétences dans les réglages."
+              });
+            }
           }
         }}
         className={`relative group rounded-2xl p-4 sm:p-5 min-h-[160px] md:min-h-[175px] shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between border ${
@@ -282,17 +317,19 @@ export function PlanningPage() {
                 referrerPolicy="no-referrer"
               />
               
-              {/* Quick remove button */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPlanningEntry(dateStr, null, null);
-                }}
-                className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Retirer le repas"
-              >
-                <Trash2 size={12} />
-              </button>
+              {/* Quick remove button (only if canManagePlanning) */}
+              {canManagePlanning && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPlanningEntry(dateStr, null, null);
+                  }}
+                  className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Retirer le repas"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
 
               <div className="absolute bottom-1 left-1 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded text-[9px] font-semibold text-white uppercase tracking-wider">
                 {recette.categorie}
@@ -321,30 +358,34 @@ export function PlanningPage() {
               
               {/* Action buttons on image */}
               <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveCustomMeal({ dishName: entry.suggestionLibre!, dateStr });
-                  }}
-                  className="p-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                  title="Transformer en fiche recette"
-                >
-                  <Sparkles size={12} />
-                </button>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPlanningEntry(dateStr, null, null);
-                  }}
-                  className="p-1 rounded-full bg-black/60 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                  title="Retirer l'idée"
-                >
-                  <Trash2 size={12} />
-                </button>
+                {hasCompetence('creer_recettes') && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveCustomMeal({ dishName: entry.suggestionLibre!, dateStr });
+                    }}
+                    className="p-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                    title="Transformer en fiche recette"
+                  >
+                    <Sparkles size={12} />
+                  </button>
+                )}
+                {canManagePlanning && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPlanningEntry(dateStr, null, null);
+                    }}
+                    className="p-1 rounded-full bg-black/60 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                    title="Retirer l'idée"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
               </div>
 
               <div className="absolute bottom-1 left-1 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded text-[9px] font-semibold text-white uppercase tracking-wider flex items-center gap-1">
-                <span>Idée libre</span>
+                <span>Idée repas</span>
               </div>
             </div>
             <div>
@@ -357,21 +398,33 @@ export function PlanningPage() {
           </div>
         ) : (
           <div className={`flex flex-col items-center justify-center flex-1 py-3 transition-colors ${
-            isPast ? 'text-rose-400/80 hover:text-rose-600' : 'text-slate-400 hover:text-emerald-600'
+            !canManagePlanning && !canSuggestMeals
+              ? 'text-slate-300'
+              : !canManagePlanning && canSuggestMeals
+                ? 'text-amber-500 hover:text-amber-600'
+                : isPast 
+                  ? 'text-rose-400/80 hover:text-rose-600' 
+                  : 'text-slate-400 hover:text-emerald-600'
           }`}>
             <div className={`w-8 h-8 rounded-full border border-dashed flex items-center justify-center mb-1 transition-all ${
-              isPast 
-                ? 'border-rose-200 group-hover:border-rose-400 group-hover:bg-rose-100/50' 
-                : 'border-slate-300 group-hover:border-emerald-500 group-hover:bg-emerald-50'
+              !canManagePlanning && !canSuggestMeals
+                ? 'border-slate-200 bg-slate-50'
+                : !canManagePlanning && canSuggestMeals
+                  ? 'border-amber-300 group-hover:border-amber-500 group-hover:bg-amber-50 text-amber-500'
+                  : isPast 
+                    ? 'border-rose-200 group-hover:border-rose-400 group-hover:bg-rose-100/50' 
+                    : 'border-slate-300 group-hover:border-emerald-500 group-hover:bg-emerald-50'
             }`}>
-              <Plus size={16} />
+              {!canManagePlanning && canSuggestMeals ? <Lightbulb size={15} /> : <Plus size={16} />}
             </div>
-            <span className="text-[10px] font-semibold">Ajouter</span>
+            <span className="text-[10px] font-semibold">
+              {!canManagePlanning && canSuggestMeals ? 'Suggérer' : !canManagePlanning ? 'Libre' : 'Ajouter'}
+            </span>
           </div>
         )}
 
         {/* Drag Hint on card hover */}
-        {(recette || entry?.suggestionLibre) && (
+        {canManagePlanning && (recette || entry?.suggestionLibre) && (
           <div className={`mt-2 pt-1 border-t flex items-center justify-between text-[9px] opacity-0 group-hover:opacity-100 transition-opacity ${
             isPast ? 'border-rose-200/60 text-rose-400' : 'border-slate-100/80 text-slate-400'
           }`}>
@@ -519,32 +572,63 @@ export function PlanningPage() {
       )}
 
       <div className="space-y-6 pt-10 border-t border-slate-200">
-        <div className="flex justify-between items-center">
-          <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Lightbulb className="text-yellow-500" size={20} strokeWidth={2.5} />
-            Suggestions de repas
-          </h3>
-          <button 
-            onClick={() => setIsAssigning({ date: 'suggest' })}
-            className="btn-secondary text-xs"
-          >
-            Ajouter une suggestion
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Lightbulb className="text-yellow-500" size={22} strokeWidth={2.5} />
+                Boîte à suggestions de la famille
+              </h3>
+              {household && (
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase rounded-full border border-emerald-200/60">
+                  {household.nom}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              {canSuggestMeals 
+                ? "Vous pouvez suggérer des repas pour toute la famille. Le Chef ou le responsable du planning peut les intégrer directement au calendrier." 
+                : "Consultez les suggestions de repas proposées par les membres de la Maison."}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {canSuggestMeals ? (
+              <button 
+                onClick={() => {
+                  setSuggestPreferredDay('Sans préférence');
+                  setIsAssigning({ date: 'suggest' });
+                }}
+                className="btn-primary text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/10"
+              >
+                <Plus size={16} />
+                <span>Suggérer un repas</span>
+              </button>
+            ) : (
+              <div className="text-xs font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                🔒 Suggestion restreinte
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {planning.filter(p => p.date.startsWith('1900-')).map((suggest, idx) => {
+          {planning.filter(p => p.date.startsWith('1900-')).map((suggest) => {
             const r = suggest.recetteId ? recettes.find(rec => rec.id === suggest.recetteId) : null;
             return (
               <div key={suggest.date} className="card p-5 space-y-4 relative group hover:shadow-md transition-all">
-                <button 
-                  onClick={() => setPlanningEntry(suggest.date, null, null)}
-                  className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                >
-                  <Trash2 size={16} />
-                </button>
+                {canManagePlanning && (
+                  <button 
+                    onClick={() => setPlanningEntry(suggest.date, null, null)}
+                    className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                    title="Supprimer la suggestion"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-100 shadow-sm">
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-100 shadow-sm shrink-0">
                     <img 
                       src={r?.image || getDishImage(r?.nom || suggest.suggestionLibre)} 
                       className="w-full h-full object-cover" 
@@ -555,17 +639,37 @@ export function PlanningPage() {
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-slate-900 text-sm leading-tight line-clamp-1">{r?.nom || suggest.suggestionLibre}</p>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{r?.categorie || 'IDÉE LIBRE'}</p>
+                    {r && suggest.suggestionLibre && (
+                      <p className="text-[11px] text-emerald-700 font-medium truncate mt-0.5">
+                        {suggest.suggestionLibre}
+                      </p>
+                    )}
                   </div>
                 </div>
+
                 <div className="flex gap-2">
                   <button 
-                    className="flex-1 py-2 bg-slate-50 border border-slate-100 text-emerald-600 text-xs font-bold rounded-lg hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1"
-                    onClick={() => setSelectedSuggest(suggest)}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+                      canManagePlanning 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 hover:bg-emerald-100'
+                        : 'bg-slate-50 text-slate-600 border border-slate-200/60 hover:bg-slate-100'
+                    }`}
+                    onClick={() => {
+                      if (canManagePlanning) {
+                        setSuggestTargetDateModal(suggest);
+                      } else {
+                        setPermissionInfoModal({
+                          title: "Suggestion active dans la boîte à idées",
+                          message: "Votre rôle vous permet de suggérer des plats pour la famille. Pour placer et valider définitivement ce plat dans le planning officiel, le Chef ou un membre autorisé à 'Gérer le Planning' doit le valider."
+                        });
+                      }
+                    }}
                   >
                     <Plus size={14} />
-                    Planifier ce repas
+                    {canManagePlanning ? 'Mettre dans le planning' : 'Suggéré au planning'}
                   </button>
-                  {suggest.suggestionLibre && (
+
+                  {suggest.suggestionLibre && hasCompetence('creer_recettes') && (
                     <button
                       className="p-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold transition-colors"
                       onClick={() => setActiveCustomMeal({ dishName: suggest.suggestionLibre!, dateStr: suggest.date })}
@@ -580,23 +684,32 @@ export function PlanningPage() {
           })}
 
           {/* Auto Suggestions (Grisées) */}
-          {autoSuggestions.map((r, idx) => (
+          {autoSuggestions.map((r) => (
             <div 
               key={`auto-${r.id}`} 
-              className="card p-5 space-y-4 relative group opacity-60 hover:opacity-100 transition-all border-dashed border-slate-200 cursor-pointer hover:border-emerald-200 overflow-visible"
+              className={`card p-5 space-y-4 relative group transition-all border-dashed border-slate-200 overflow-visible ${
+                canSuggestMeals ? 'opacity-60 hover:opacity-100 cursor-pointer hover:border-emerald-200' : 'opacity-40 cursor-not-allowed'
+              }`}
               onClick={() => {
-                const now = new Date();
+                if (!canSuggestMeals) {
+                  setPermissionInfoModal({
+                    title: "Action non autorisée",
+                    message: "Votre rôle ne possède pas la compétence 'Suggérer des plats'. Demandez au Chef de maison de modifier vos droits dans la matrice de compétences."
+                  });
+                  return;
+                }
                 const randomDay = Math.floor(Math.random() * 28) + 1;
                 const randomMonth = Math.floor(Math.random() * 12) + 1;
                 const dateString = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
-                setPlanningEntry(dateString, r.id, null);
+                const note = currentMember ? `Suggéré par ${currentMember.nom}` : null;
+                setPlanningEntry(dateString, r.id, note);
               }}
             >
               <div className="absolute top-2 right-2 bg-emerald-50 text-emerald-600 text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-lg border border-emerald-100 shadow-sm group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition-all transform group-hover:scale-105">
                 Suggestion
               </div>
               <div className="flex items-center gap-4 grayscale group-hover:grayscale-0 transition-all">
-                <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-100 shadow-sm">
+                <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-100 shadow-sm shrink-0">
                   <img src={r.image || getDishImage(r.nom)} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                 </div>
                 <div>
@@ -605,7 +718,7 @@ export function PlanningPage() {
                 </div>
               </div>
               <div className="text-[10px] text-slate-400 font-medium text-center italic">
-                Cliquer pour valider cette suggestion
+                {canSuggestMeals ? "Cliquer pour suggérer ce plat à la famille" : "Suggestions verrouillées"}
               </div>
             </div>
           ))}
@@ -816,7 +929,15 @@ export function PlanningPage() {
               className="relative bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-5"
             >
                <div className="flex justify-between items-center">
-                 <h3 className="text-xl font-bold text-slate-900">Nouvelle suggestion</h3>
+                 <div>
+                   <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                     <Lightbulb className="text-yellow-500" size={20} />
+                     Suggérer un repas
+                   </h3>
+                   <p className="text-xs text-slate-400 mt-0.5">
+                     Proposé par <strong className="text-slate-700">{currentMember?.nom || 'Moi'}</strong>
+                   </p>
+                 </div>
                  <button 
                   onClick={() => { setIsAssigning(null); setSuggestSearchTerm(''); setNewSuggestion(''); }} 
                   className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
@@ -824,10 +945,33 @@ export function PlanningPage() {
                    <X size={18} />
                  </button>
                </div>
+
+               {/* Preferred day chips */}
+               <div>
+                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                   Jour souhaité (optionnel)
+                 </label>
+                 <div className="flex flex-wrap gap-1.5">
+                   {['Sans préférence', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map(d => (
+                     <button
+                       key={d}
+                       type="button"
+                       onClick={() => setSuggestPreferredDay(d)}
+                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                         suggestPreferredDay === d
+                           ? 'bg-emerald-600 text-white shadow-xs'
+                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                       }`}
+                     >
+                       {d}
+                     </button>
+                   ))}
+                 </div>
+               </div>
                
-               <div className="space-y-4">
+               <div className="space-y-4 pt-1">
                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Choisir une recette existante</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Choisir une recette existante</label>
                     <div className="relative mb-2">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                       <input 
@@ -839,7 +983,7 @@ export function PlanningPage() {
                       />
                     </div>
 
-                    <div className="space-y-1 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
+                    <div className="space-y-1 max-h-44 overflow-y-auto pr-1 scrollbar-thin">
                       {filteredSuggestRecettes.length > 0 ? (
                         filteredSuggestRecettes.map(r => (
                           <button 
@@ -848,9 +992,13 @@ export function PlanningPage() {
                               const randomDay = Math.floor(Math.random() * 28) + 1;
                               const randomMonth = Math.floor(Math.random() * 12) + 1;
                               const finalDate = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
-                              setPlanningEntry(finalDate, r.id, null);
+                              const authorName = currentMember?.nom || 'Famille';
+                              const dayNote = suggestPreferredDay !== 'Sans préférence' ? `pour ${suggestPreferredDay}` : null;
+                              const note = dayNote ? `Suggéré par ${authorName} (${dayNote})` : `Suggéré par ${authorName}`;
+                              setPlanningEntry(finalDate, r.id, note);
                               setIsAssigning(null);
                               setSuggestSearchTerm('');
+                              setSuggestPreferredDay('Sans préférence');
                             }}
                             className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-emerald-50 border border-transparent hover:border-emerald-100 text-left transition-all group"
                           >
@@ -881,22 +1029,26 @@ export function PlanningPage() {
                  </div>
 
                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Idée libre</label>
+                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Idée libre</label>
                     <div className="flex gap-2">
                       <input 
                         type="text" 
                         value={newSuggestion || ''}
                         onChange={(e) => setNewSuggestion(e.target.value)}
-                        placeholder="ex: Commande de sushis, Soirée tacos..."
+                        placeholder="ex: Soirée crêpes, Pizzas maison..."
                         className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-xs font-medium"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && newSuggestion.trim()) {
                             const randomDay = Math.floor(Math.random() * 28) + 1;
                             const randomMonth = Math.floor(Math.random() * 12) + 1;
                             const dateString = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
-                            setPlanningEntry(dateString, null, newSuggestion.trim());
+                            const authorName = currentMember?.nom || 'Famille';
+                            const dayNote = suggestPreferredDay !== 'Sans préférence' ? ` (pour ${suggestPreferredDay})` : '';
+                            const fullNote = `${newSuggestion.trim()}${dayNote} • par ${authorName}`;
+                            setPlanningEntry(dateString, null, fullNote);
                             setNewSuggestion('');
                             setSuggestSearchTerm('');
+                            setSuggestPreferredDay('Sans préférence');
                             setIsAssigning(null);
                           }
                         }}
@@ -907,17 +1059,21 @@ export function PlanningPage() {
                             const randomDay = Math.floor(Math.random() * 28) + 1;
                             const randomMonth = Math.floor(Math.random() * 12) + 1;
                             const dateString = `1900-${randomMonth.toString().padStart(2, '0')}-${randomDay.toString().padStart(2, '0')}`;
-                            setPlanningEntry(dateString, null, newSuggestion.trim());
+                            const authorName = currentMember?.nom || 'Famille';
+                            const dayNote = suggestPreferredDay !== 'Sans préférence' ? ` (pour ${suggestPreferredDay})` : '';
+                            const fullNote = `${newSuggestion.trim()}${dayNote} • par ${authorName}`;
+                            setPlanningEntry(dateString, null, fullNote);
                             setNewSuggestion('');
                             setSuggestSearchTerm('');
+                            setSuggestPreferredDay('Sans préférence');
                             setIsAssigning(null);
                           }
                         }}
                         disabled={!newSuggestion.trim()}
-                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 text-xs flex items-center gap-1"
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50 text-xs flex items-center gap-1 shrink-0"
                       >
                         <Plus size={16} />
-                        <span>Ajouter</span>
+                        <span>Suggérer</span>
                       </button>
                     </div>
                  </div>
@@ -929,6 +1085,178 @@ export function PlanningPage() {
                >
                  Annuler
                </button>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Modal: Placer directement une suggestion dans le planning (pour les membres ayant gerer_planning) */}
+        {suggestTargetDateModal && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setSuggestTargetDateModal(null)} 
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative bg-white w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-5"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">Placer dans le planning</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Sélectionnez le jour auquel attribuer cette suggestion
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setSuggestTargetDateModal(null)} 
+                  className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Dish info preview */}
+              <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-2xl flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-white border border-emerald-100 shrink-0 shadow-xs">
+                  {(() => {
+                    const r = suggestTargetDateModal.recetteId ? recettes.find(rec => rec.id === suggestTargetDateModal.recetteId) : null;
+                    return (
+                      <img 
+                        src={r?.image || getDishImage(r?.nom || suggestTargetDateModal.suggestionLibre)} 
+                        className="w-full h-full object-cover" 
+                        alt="" 
+                        referrerPolicy="no-referrer" 
+                      />
+                    );
+                  })()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-emerald-950 text-sm truncate">
+                    {(() => {
+                      const r = suggestTargetDateModal.recetteId ? recettes.find(rec => rec.id === suggestTargetDateModal.recetteId) : null;
+                      return r?.nom || suggestTargetDateModal.suggestionLibre;
+                    })()}
+                  </p>
+                  {suggestTargetDateModal.recetteId && suggestTargetDateModal.suggestionLibre && (
+                    <p className="text-xs text-emerald-700 font-medium truncate">
+                      {suggestTargetDateModal.suggestionLibre}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Days selection */}
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Cette semaine ({format(activeMonday, 'd MMM')} au {format(addDays(activeMonday, 6), 'd MMM', { locale: fr })})
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {week1Days.map((day) => {
+                    const dateStr = format(day, 'yyyy-MM-dd');
+                    const existing = planning.find(p => p.date === dateStr);
+                    const existingRecipe = existing?.recetteId ? recettes.find(r => r.id === existing.recetteId) : null;
+                    const dayLabel = format(day, 'EEEE d MMM', { locale: fr });
+
+                    return (
+                      <button
+                        key={dateStr}
+                        onClick={() => {
+                          setPlanningEntry(dateStr, suggestTargetDateModal.recetteId, suggestTargetDateModal.suggestionLibre);
+                          setPlanningEntry(suggestTargetDateModal.date, null, null);
+                          setSuggestTargetDateModal(null);
+                        }}
+                        className="p-2.5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-left transition-all group"
+                      >
+                        <p className="text-xs font-bold text-slate-800 group-hover:text-emerald-900 capitalize leading-tight">
+                          {dayLabel}
+                        </p>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                          {existingRecipe ? `Occupe: ${existingRecipe.nom}` : existing?.suggestionLibre ? `Occupe: ${existing?.suggestionLibre}` : 'Vide'}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Semaine suivante
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-32 overflow-y-auto pr-1">
+                  {week2Days.map((day) => {
+                    const dateStr = format(day, 'yyyy-MM-dd');
+                    const dayLabel = format(day, 'EEEE d MMM', { locale: fr });
+
+                    return (
+                      <button
+                        key={dateStr}
+                        onClick={() => {
+                          setPlanningEntry(dateStr, suggestTargetDateModal.recetteId, suggestTargetDateModal.suggestionLibre);
+                          setPlanningEntry(suggestTargetDateModal.date, null, null);
+                          setSuggestTargetDateModal(null);
+                        }}
+                        className="p-2 rounded-xl border border-slate-100 hover:border-emerald-400 hover:bg-emerald-50 text-left transition-all group"
+                      >
+                        <p className="text-xs font-bold text-slate-700 group-hover:text-emerald-900 capitalize truncate">
+                          {dayLabel}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => setSuggestTargetDateModal(null)}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                >
+                  Annuler
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Modal: Explication permissions matrice (ex: membre avec suggerer_repas) */}
+        {permissionInfoModal && (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setPermissionInfoModal(null)} 
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm" 
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="relative bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl text-center space-y-4"
+            >
+              <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                <Lightbulb size={28} />
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 text-base">{permissionInfoModal.title}</h4>
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  {permissionInfoModal.message}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setPermissionInfoModal(null)}
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/20"
+              >
+                J'ai compris
+              </button>
             </motion.div>
           </div>
         )}

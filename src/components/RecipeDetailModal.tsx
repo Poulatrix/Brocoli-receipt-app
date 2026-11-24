@@ -15,6 +15,9 @@ interface RecipeDetailModalProps {
 
 export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddShopping }: RecipeDetailModalProps) {
   const updateRecette = useStore(state => state.updateRecette);
+  const hasCompetence = useStore(state => state.hasCompetence);
+  const canEdit = hasCompetence('editer_recettes');
+  const canDelete = hasCompetence('supprimer_recettes');
   const [portions, setPortions] = useState(recette.portions);
   const [currentStep, setCurrentStep] = useState(0);
   const [modeCuisine, setModeCuisine] = useState(false);
@@ -422,23 +425,27 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
               >
                 <Share2 size={20} />
               </button>
-              <button 
-                onClick={onEdit}
-                className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-emerald-600 transition-colors shadow-sm"
-                title="Modifier"
-              >
-                <Pencil size={20} />
-              </button>
-              <button 
-                onClick={(e) => { 
-                  e.stopPropagation();
-                  setShowConfirmDelete(true);
-                }}
-                className="p-2 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-red-600 transition-colors shadow-sm"
-                title="Supprimer"
-              >
-                <Trash2 size={20} />
-              </button>
+              {canEdit && (
+                <button 
+                  onClick={onEdit}
+                  className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-emerald-600 transition-colors shadow-sm"
+                  title="Modifier"
+                >
+                  <Pencil size={20} />
+                </button>
+              )}
+              {canDelete && (
+                <button 
+                  onClick={(e) => { 
+                    e.stopPropagation();
+                    setShowConfirmDelete(true);
+                  }}
+                  className="p-2 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-red-600 transition-colors shadow-sm"
+                  title="Supprimer"
+                >
+                  <Trash2 size={20} />
+                </button>
+              )}
             </div>
 
             <div className="space-y-8">
@@ -573,19 +580,23 @@ export function RecipeDetailModal({ recette, onClose, onEdit, onDelete, onAddSho
             </div>
 
             {/* Actions Bar (Footer for Mobile) */}
-            <div className="flex justify-between items-center pt-8 border-t border-slate-100 pb-10">
+            <div className="flex justify-around items-center pt-8 border-t border-slate-100 pb-10">
                <button onClick={handleShare} className="flex flex-col items-center gap-2 text-slate-400">
                   <div className="p-3 bg-slate-50 rounded-xl"><Share2 size={20} /></div>
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Partager</span>
                </button>
-               <button onClick={onEdit} className="flex flex-col items-center gap-2 text-slate-400">
-                  <div className="p-3 bg-slate-50 rounded-xl"><Pencil size={20} /></div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Modifier</span>
-               </button>
-               <button onClick={() => setShowConfirmDelete(true)} className="flex flex-col items-center gap-2 text-red-400">
-                  <div className="p-3 bg-red-50 rounded-xl"><Trash2 size={20} /></div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-red-300">Effacer</span>
-               </button>
+               {canEdit && (
+                 <button onClick={onEdit} className="flex flex-col items-center gap-2 text-slate-400">
+                    <div className="p-3 bg-slate-50 rounded-xl"><Pencil size={20} /></div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Modifier</span>
+                 </button>
+               )}
+               {canDelete && (
+                 <button onClick={() => setShowConfirmDelete(true)} className="flex flex-col items-center gap-2 text-red-400">
+                    <div className="p-3 bg-red-50 rounded-xl"><Trash2 size={20} /></div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-red-300">Effacer</span>
+                 </button>
+               )}
             </div>
           </div>
         </div>

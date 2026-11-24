@@ -125,8 +125,13 @@ export function HomePage({ onNavigate }: HomePageProps) {
     addManualShoppingItem, 
     toggleShoppingItem, 
     deleteShoppingItem,
-    currentUserId 
+    currentUserId,
+    household,
+    getCurrentMember,
+    hasCompetence
   } = useStore();
+
+  const currentMember = getCurrentMember();
 
   // Modal States
   const [selectedRecipe, setSelectedRecipe] = useState<Recette | null>(null);
@@ -361,6 +366,21 @@ export function HomePage({ onNavigate }: HomePageProps) {
           <p className="text-xs sm:text-sm text-stone-600 font-medium mt-1">
             Bonjour, que cuisine-t-on aujourd'hui ?
           </p>
+          {household && (
+            <button
+              onClick={() => onNavigate('settings')}
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-full text-[11px] font-bold mt-1.5 transition-all group"
+            >
+              <span>🏡 {household.nom}</span>
+              <span className="text-emerald-400">•</span>
+              <span className="text-emerald-700 font-medium">
+                {currentMember?.role === 'chef' ? '👑 Chef' :
+                 currentMember?.role === 'cuisinier' ? '🍳 Cuisinier' :
+                 currentMember?.role === 'commis' ? '🧑‍🍳 Commis' :
+                 currentMember?.role === 'enfant' ? '👶 Gourmand' : 'Membre'}
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 relative">

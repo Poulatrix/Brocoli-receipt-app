@@ -12,7 +12,9 @@ const CATEGORIES: (CategorieRecette | 'Tout')[] = [
 ];
 
 export function RecipesPage() {
-  const { recettes, addRecette, updateRecette, deleteRecette, addToShoppingList } = useStore();
+  const { recettes, addRecette, updateRecette, deleteRecette, addToShoppingList, hasCompetence } = useStore();
+  const canCreateRecipe = hasCompetence('creer_recettes');
+  const canUseAI = hasCompetence('utiliser_ia');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<'tous' | 'ete' | 'hiver' | 'toute_annee'>('tous');
   const [maxTime, setMaxTime] = useState<number>(240);
@@ -147,9 +149,13 @@ export function RecipesPage() {
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           <button 
-            onClick={handleCreatePhotoIA}
-            className="flex-1 sm:flex-initial px-3 sm:px-3.5 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 font-semibold text-xs sm:text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
-            title="Scanner une photo de recette ou un plat"
+            onClick={canUseAI ? handleCreatePhotoIA : () => alert("Option Photo IA non autorisée par la matrice de compétences de votre Maison.")}
+            className={`flex-1 sm:flex-initial px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95 ${
+              canUseAI 
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700' 
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-70'
+            }`}
+            title={canUseAI ? "Scanner une photo de recette ou un plat" : "Accès restreint par la matrice de compétences"}
           >
             <Camera size={16} className="shrink-0" />
             <span>Photo IA</span>
@@ -162,8 +168,13 @@ export function RecipesPage() {
           </button>
           <button 
             id="btn-new-recipe"
-            onClick={handleCreate}
-            className="flex-1 sm:flex-initial btn-primary text-xs sm:text-sm shadow-sm justify-center py-2 sm:py-2.5 active:scale-95"
+            onClick={canCreateRecipe ? handleCreate : () => alert("Création de recettes restreinte par la matrice de compétences de votre Maison.")}
+            className={`flex-1 sm:flex-initial text-xs sm:text-sm shadow-sm justify-center py-2 sm:py-2.5 active:scale-95 flex items-center gap-1.5 rounded-xl font-bold ${
+              canCreateRecipe
+                ? 'btn-primary'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-70'
+            }`}
+            title={canCreateRecipe ? "Ajouter une recette" : "Accès restreint par la matrice de compétences"}
           >
             <Plus size={16} className="shrink-0" />
             <span>Nouvelle recette</span>

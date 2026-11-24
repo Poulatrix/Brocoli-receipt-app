@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Home, ChefHat, Calendar, ShoppingCart, Settings, Terminal, X } from 'lucide-react';
+import { Home, ChefHat, Calendar, ShoppingCart, Settings, Terminal, X, Users, Crown, Shield } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { HomePage } from './pages/HomePage';
 import { RecipesPage } from './pages/RecipesPage';
@@ -16,6 +16,7 @@ import { useAuth } from './lib/auth';
 import { useStore } from './store';
 import { Login } from './components/Login';
 import { syncWidgetSchedule } from './lib/widgetSync';
+import { HouseholdJoinModal } from './components/HouseholdJoinModal';
 
 const TABS = [
   { id: 'home', label: 'Accueil', icon: Home },
@@ -38,16 +39,38 @@ export default function App() {
   };
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
+  const [joinModalCode, setJoinModalCode] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const joinParam = params.get('join');
+      if (joinParam) return joinParam.trim();
+    } catch {}
+    return null;
+  });
+
   const { user, loading: authLoading } = useAuth();
-  const { setUserId, loading: storeLoading, error: storeError, setError, planning, recettes } = useStore();
+  const { 
+    setUserData, 
+    loading: storeLoading, 
+    error: storeError, 
+    setError, 
+    planning, 
+    recettes,
+    courses,
+    household,
+    getCurrentMember,
+    syncMcpMirror
+  } = useStore();
+
+  const currentMember = getCurrentMember();
 
   useEffect(() => {
     if (user) {
-      setUserId(user.id);
+      setUserData(user.id, user.email);
     } else {
-      setUserId(null);
+      setUserData(null, null);
     }
-  }, [user, setUserId]);
+  }, [user, setUserData]);
 
   // Synchronisation continue du planning complet vers le widget iOS
   useEffect(() => {
@@ -55,6 +78,24 @@ export default function App() {
       syncWidgetSchedule(planning, recettes, user?.id).catch(() => {});
     }
   }, [planning, recettes, user?.id]);
+
+  // Synchronisation du miroir MCP et application des actions MCP en attente
+  useEffect(() => {
+    if (!user?.id || !household?.id) return;
+    const timer = setTimeout(() => {
+      syncMcpMirror().catch(() => {});
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [user?.id, household?.id, recettes, planning, courses, syncMcpMirror]);
+
+  useEffect(() => {
+    if (!user?.id || !household?.id) return;
+    const onFocus = () => {
+      syncMcpMirror().catch(() => {});
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [user?.id, household?.id, syncMcpMirror]);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -90,6 +131,30 @@ export default function App() {
       <Navbar tabs={TABS} activeTab={activeTab} setActiveTab={setActiveTab} />
       
       <main className="max-w-7xl mx-auto px-4 py-8 relative z-10">
+        {/* Top Header Household Quick Bar */}
+        {household && (
+          <div className="flex items-center justify-between mb-6 pb-2 border-b border-slate-200/50">
+            <button
+              onClick={() => setActiveTab('settings')}
+              className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/80 hover:bg-white backdrop-blur-sm border border-emerald-100 rounded-full shadow-sm hover:shadow transition-all group"
+            >
+              <span className="text-base">🏡</span>
+              <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">
+                {household.nom}
+              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                <span>{currentMember?.role === 'chef' ? '👑 Chef' : currentMember?.role === 'cuisinier' ? '🍳 Cuisinier' : currentMember?.role === 'commis' ? '🧑‍🍳 Commis' : '👶 Gourmand'}</span>
+              </span>
+            </button>
+
+            <div className="text-[11px] text-slate-400 font-medium hidden sm:flex items-center gap-1.5">
+              <Users size={13} className="text-emerald-600" />
+              <span>{household.membres.length} membre{household.membres.length > 1 ? 's' : ''} connecté{household.membres.length > 1 ? 's' : ''}</span>
+            </div>
+          </div>
+        )}
+
         {storeLoading && (
           <div className="fixed top-6 right-6 z-50 bg-white/90 backdrop-blur shadow-xl shadow-emerald-500/5 border border-emerald-100 px-4 py-2 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-emerald-600 flex items-center gap-3">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -113,7 +178,24 @@ export default function App() {
         <AnimatePresence mode="wait">
           {renderContent()}
         </AnimatePresence>
+
+        {/* Modal for invitation link URL (?join=CODE) */}
+        {joinModalCode && (
+          <HouseholdJoinModal
+            isOpen={true}
+            initialCode={joinModalCode}
+            onClose={() => setJoinModalCode(null)}
+            onSuccess={() => {
+              setJoinModalCode(null);
+              // Clean URL parameter without reloading
+              const url = new URL(window.location.href);
+              url.searchParams.delete('join');
+              window.history.replaceState({}, '', url.toString());
+            }}
+          />
+        )}
       </main>
     </div>
   );
 }
+
