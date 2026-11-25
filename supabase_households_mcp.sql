@@ -52,3 +52,6 @@ drop policy if exists "Authenticated users manage mcp mirrors" on public.househo
 create policy "Authenticated users manage mcp mirrors"
   on public.household_mcp_mirrors for all to authenticated
   using (true) with check (true);
+
+notify pgrst, 'reload schema';
+

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
+import pg from "pg";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import {
   Household,
@@ -14,6 +15,8 @@ import {
 } from "../types.js";
 import type { HouseholdMirrorData } from "./mcpService.js";
 
+const { Pool } = pg;
+
 export interface McpSecretRecord {
   tokenHash: string;
   tokenPreview: string;
@@ -25,7 +28,7 @@ export interface McpSecretRecord {
 
 export class MissingSchemaError extends Error {
   needsSetup = true;
-  constructor(message = "Les tables Supabase pour la Maison Familiale ne sont pas encore créées.") {
+  constructor(message = "L'espace Maison Familiale est en attente d'activation.") {
     super(message);
     this.name = "MissingSchemaError";
   }
@@ -115,6 +118,154 @@ function isMissingTableOrRlsError(err: any): { missingTable: boolean; rlsBlocked
     msg.includes("row-level security") ||
     msg.includes("permission denied");
   return { missingTable, rlsBlocked };
+}
+
+const AUTO_SCHEMA_SQL = `
+create table if not exists public.households (
+  id text primary key,
+  nom text not null,
+  code_invitation text unique not null,
+  createur_user_id text not null,
+  date_creation timestamptz not null default now(),
+  role_competences_preset jsonb not null default '{}'::jsonb,
+  membres jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_households_code_invitation
+  on public.households (upper(code_invitation));
+
+create table if not exists public.household_mcp_secrets (
+  household_id text primary key references public.households(id) on delete cascade,
+  token_hash text not null default '',
+  token_preview text not null default '',
+  enabled boolean not null default false,
+  bound_user_id text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.household_mcp_mirrors (
+  household_id text primary key references public.households(id) on delete cascade,
+  recettes jsonb not null default '[]'::jsonb,
+  planning jsonb not null default '[]'::jsonb,
+  courses jsonb not null default '[]'::jsonb,
+  pending_mutations jsonb not null default '[]'::jsonb,
+  last_synced_at bigint not null default 0
+);
+
+alter table public.households enable row level security;
+alter table public.household_mcp_secrets enable row level security;
+alter table public.household_mcp_mirrors enable row level security;
+
+drop policy if exists "Authenticated users manage households" on public.households;
+create policy "Authenticated users manage households"
+  on public.households for all to authenticated using (true) with check (true);
+
+drop policy if exists "Authenticated users manage mcp secrets" on public.household_mcp_secrets;
+create policy "Authenticated users manage mcp secrets"
+  on public.household_mcp_secrets for all to authenticated using (true) with check (true);
+
+drop policy if exists "Authenticated users manage mcp mirrors" on public.household_mcp_mirrors;
+create policy "Authenticated users manage mcp mirrors"
+  on public.household_mcp_mirrors for all to authenticated using (true) with check (true);
+
+notify pgrst, 'reload schema';
+`;
+
+let schemaEnsured = false;
+let schemaEnsurePromise: Promise<boolean> | null = null;
+
+function getPostgresConnectionString(): string {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.SUPABASE_DB_URL ||
+    ""
+  ).trim();
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function ensureHouseholdSchema(force = false): Promise<boolean> {
+  if (schemaEnsured && !force) return true;
+
+  const connectionString = getPostgresConnectionString();
+  if (!connectionString) return false;
+
+  if (schemaEnsurePromise) {
+    return schemaEnsurePromise;
+  }
+
+  schemaEnsurePromise = (async () => {
+    const isLocal =
+      connectionString.includes("localhost") ||
+      connectionString.includes("127.0.0.1");
+
+    const pool = new Pool({
+      connectionString,
+      max: 1,
+      connectionTimeoutMillis: 8000,
+      ...(isLocal ? {} : { ssl: { rejectUnauthorized: false } }),
+    });
+
+    try {
+      await pool.query(AUTO_SCHEMA_SQL);
+      schemaEnsured = true;
+      await sleep(350);
+      return true;
+    } catch (err: any) {
+      console.error("[Households] Auto-schema Postgres execution failed:", err?.message || err);
+      return false;
+    } finally {
+      await pool.end().catch(() => {});
+    }
+  })();
+
+  try {
+    return await schemaEnsurePromise;
+  } finally {
+    schemaEnsurePromise = null;
+  }
+}
+
+async function runSupabaseWithAutoSchema<T extends { error: any }>(
+  operation: () => PromiseLike<T>
+): Promise<T> {
+  let result = await operation();
+  if (!result.error) {
+    schemaEnsured = true;
+    return result;
+  }
+
+  const { missingTable } = isMissingTableOrRlsError(result.error);
+  if (!missingTable) {
+    return result;
+  }
+
+  const provisioned = await ensureHouseholdSchema(true);
+  if (!provisioned) {
+    return result;
+  }
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    result = await operation();
+    if (!result.error) {
+      schemaEnsured = true;
+      return result;
+    }
+    const check = isMissingTableOrRlsError(result.error);
+    if (!check.missingTable) {
+      return result;
+    }
+    await sleep(300);
+  }
+
+  return result;
 }
 
 // ========================================================
@@ -304,7 +455,7 @@ function mapRowToSecret(row: any): McpSecretRecord | null {
 async function listAllHouseholds(userJwt?: string): Promise<{ source: "supabase" | "disk"; list: Household[] }> {
   const sb = getServerSupabase(userJwt);
   if (sb) {
-    const { data, error } = await sb.from("households").select("*");
+    const { data, error } = await runSupabaseWithAutoSchema(() => sb.from("households").select("*"));
     if (!error && Array.isArray(data)) {
       return { source: "supabase", list: data.map(mapRowToHousehold) };
     }
@@ -313,7 +464,7 @@ async function listAllHouseholds(userJwt?: string): Promise<{ source: "supabase"
       if (IS_VERCEL) {
         if (missingTable) throw new MissingSchemaError();
         if (rlsBlocked) {
-          throw new Error("Accès Supabase refusé (RLS). Vérifiez votre connexion ou configurez SUPABASE_SERVICE_ROLE_KEY sur Vercel.");
+          throw new Error("Accès refusé par la base de données. Reconnectez-vous ou réessayez.");
         }
         throw new Error(error.message);
       }
@@ -322,7 +473,7 @@ async function listAllHouseholds(userJwt?: string): Promise<{ source: "supabase"
       }
     }
   } else if (IS_VERCEL) {
-    throw new MissingSchemaError("Configuration Supabase manquante sur Vercel (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).");
+    throw new MissingSchemaError("Configuration de base de données manquante sur le serveur.");
   }
 
   return { source: "disk", list: Object.values(loadDiskHouseholds()) };
@@ -331,18 +482,20 @@ async function listAllHouseholds(userJwt?: string): Promise<{ source: "supabase"
 async function getHouseholdById(householdId: string, userJwt?: string): Promise<{ source: "supabase" | "disk"; household: Household | null }> {
   const sb = getServerSupabase(userJwt);
   if (sb) {
-    const { data, error } = await sb.from("households").select("*").eq("id", householdId).maybeSingle();
+    const { data, error } = await runSupabaseWithAutoSchema(() =>
+      sb.from("households").select("*").eq("id", householdId).maybeSingle()
+    );
     if (!error) {
       return { source: "supabase", household: data ? mapRowToHousehold(data) : null };
     }
     const { missingTable, rlsBlocked } = isMissingTableOrRlsError(error);
     if (IS_VERCEL) {
       if (missingTable) throw new MissingSchemaError();
-      if (rlsBlocked) throw new Error("Accès Supabase refusé (RLS).");
+      if (rlsBlocked) throw new Error("Accès refusé par la base de données.");
       throw new Error(error.message);
     }
   } else if (IS_VERCEL) {
-    throw new MissingSchemaError("Configuration Supabase manquante sur Vercel.");
+    throw new MissingSchemaError("Configuration de base de données manquante sur le serveur.");
   }
 
   const disk = loadDiskHouseholds();
@@ -353,18 +506,20 @@ async function upsertHousehold(household: Household, source: "supabase" | "disk"
   if (source === "supabase") {
     const sb = getServerSupabase(userJwt);
     if (!sb) throw new Error("Supabase non initialisé");
-    const { error } = await sb.from("households").upsert(
-      {
-        id: household.id,
-        nom: household.nom,
-        code_invitation: household.codeInvitation,
-        createur_user_id: household.createurUserId,
-        date_creation: household.dateCreation,
-        role_competences_preset: household.roleCompetencesPreset,
-        membres: household.membres,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
+    const { error } = await runSupabaseWithAutoSchema(() =>
+      sb.from("households").upsert(
+        {
+          id: household.id,
+          nom: household.nom,
+          code_invitation: household.codeInvitation,
+          createur_user_id: household.createurUserId,
+          date_creation: household.dateCreation,
+          role_competences_preset: household.roleCompetencesPreset,
+          membres: household.membres,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      )
     );
     if (error) {
       const { missingTable } = isMissingTableOrRlsError(error);
@@ -383,7 +538,7 @@ async function deleteHouseholdRecord(householdId: string, source: "supabase" | "
   if (source === "supabase") {
     const sb = getServerSupabase(userJwt);
     if (!sb) return;
-    await sb.from("households").delete().eq("id", householdId);
+    await runSupabaseWithAutoSchema(() => sb.from("households").delete().eq("id", householdId));
     return;
   }
   const disk = loadDiskHouseholds();
@@ -395,11 +550,13 @@ async function getSecretRecord(householdId: string, source: "supabase" | "disk",
   if (source === "supabase") {
     const sb = getServerSupabase(userJwt);
     if (!sb) return null;
-    const { data, error } = await sb
-      .from("household_mcp_secrets")
-      .select("*")
-      .eq("household_id", householdId)
-      .maybeSingle();
+    const { data, error } = await runSupabaseWithAutoSchema(() =>
+      sb
+        .from("household_mcp_secrets")
+        .select("*")
+        .eq("household_id", householdId)
+        .maybeSingle()
+    );
     if (error) {
       const { missingTable } = isMissingTableOrRlsError(error);
       if (missingTable && IS_VERCEL) throw new MissingSchemaError();
@@ -415,17 +572,19 @@ async function upsertSecretRecord(householdId: string, secret: McpSecretRecord, 
   if (source === "supabase") {
     const sb = getServerSupabase(userJwt);
     if (!sb) throw new Error("Supabase non initialisé");
-    const { error } = await sb.from("household_mcp_secrets").upsert(
-      {
-        household_id: householdId,
-        token_hash: secret.tokenHash,
-        token_preview: secret.tokenPreview,
-        enabled: secret.enabled,
-        bound_user_id: secret.boundUserId,
-        created_at: secret.createdAt,
-        updated_at: secret.updatedAt,
-      },
-      { onConflict: "household_id" }
+    const { error } = await runSupabaseWithAutoSchema(() =>
+      sb.from("household_mcp_secrets").upsert(
+        {
+          household_id: householdId,
+          token_hash: secret.tokenHash,
+          token_preview: secret.tokenPreview,
+          enabled: secret.enabled,
+          bound_user_id: secret.boundUserId,
+          created_at: secret.createdAt,
+          updated_at: secret.updatedAt,
+        },
+        { onConflict: "household_id" }
+      )
     );
     if (error) {
       const { missingTable } = isMissingTableOrRlsError(error);
@@ -443,11 +602,13 @@ async function upsertSecretRecord(householdId: string, secret: McpSecretRecord, 
 export async function getMirrorRecord(householdId: string, userJwt?: string): Promise<{ source: "supabase" | "disk"; mirror: HouseholdMirrorData }> {
   const sb = getServerSupabase(userJwt);
   if (sb) {
-    const { data, error } = await sb
-      .from("household_mcp_mirrors")
-      .select("*")
-      .eq("household_id", householdId)
-      .maybeSingle();
+    const { data, error } = await runSupabaseWithAutoSchema(() =>
+      sb
+        .from("household_mcp_mirrors")
+        .select("*")
+        .eq("household_id", householdId)
+        .maybeSingle()
+    );
     if (!error) {
       const mirror: HouseholdMirrorData = data
         ? {
@@ -479,16 +640,18 @@ export async function saveMirrorRecord(householdId: string, mirror: HouseholdMir
   if (source === "supabase") {
     const sb = getServerSupabase(userJwt);
     if (!sb) return;
-    const { error } = await sb.from("household_mcp_mirrors").upsert(
-      {
-        household_id: householdId,
-        recettes: mirror.recettes,
-        planning: mirror.planning,
-        courses: mirror.courses,
-        pending_mutations: mirror.pendingMutations,
-        last_synced_at: mirror.lastSyncedAt,
-      },
-      { onConflict: "household_id" }
+    const { error } = await runSupabaseWithAutoSchema(() =>
+      sb.from("household_mcp_mirrors").upsert(
+        {
+          household_id: householdId,
+          recettes: mirror.recettes,
+          planning: mirror.planning,
+          courses: mirror.courses,
+          pending_mutations: mirror.pendingMutations,
+          last_synced_at: mirror.lastSyncedAt,
+        },
+        { onConflict: "household_id" }
+      )
     );
     if (error && IS_VERCEL) {
       const { missingTable } = isMissingTableOrRlsError(error);

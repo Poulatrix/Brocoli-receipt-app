@@ -109,14 +109,14 @@ export function McpSettingsModule() {
           <div className="space-y-1">
             <h3 className="font-bold text-slate-900 text-base">Connecteur MCP (Model Context Protocol)</h3>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Connectez un assistant compatible MCP via Streamable HTTP (<code className="font-mono">/api/mcp</code>) pour consulter les repas de la semaine, lire/compléter la liste de courses et suggérer des plats.
+              Connectez votre assistant IA en 1 clic pour consulter les repas de la semaine, lire ou compléter la liste de courses et suggérer des plats.
             </p>
           </div>
         </div>
         <div className="flex items-start gap-2.5 p-3.5 bg-white border border-stone-200 rounded-2xl text-xs text-slate-600">
           <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
           <span>
-            Initialisez ou reconnectez votre Maison Familiale ci-dessus pour activer le serveur MCP et générer son jeton Bearer.
+            Dès que votre Maison Familiale ci-dessus est prête, vous pourrez activer le connecteur MCP et copier votre jeton d'accès en un clic.
           </span>
         </div>
       </section>
