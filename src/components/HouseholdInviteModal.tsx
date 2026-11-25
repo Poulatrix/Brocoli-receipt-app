@@ -36,7 +36,9 @@ export function HouseholdInviteModal({ isOpen, onClose }: HouseholdInviteModalPr
   if (!isOpen || !household) return null;
 
   const inviteCode = household.codeInvitation || 'MAISON-0000';
-  const joinUrl = `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(inviteCode)}`;
+  const configuredOrigin = (import.meta.env.VITE_PUBLIC_APP_URL || '').trim().replace(/\/$/, '');
+  const baseUrl = configuredOrigin || `${window.location.origin}${window.location.pathname}`;
+  const joinUrl = `${baseUrl}?join=${encodeURIComponent(inviteCode)}`;
 
   const invitationMessage = `👨‍👩‍👧‍👦 Rejoins notre Maison "${household.nom}" sur l'application BROCOLI !\n\n🔑 Code d'invitation : ${inviteCode}\n\n👉 Ou clique directement sur ce lien pour rejoindre notre carnet familial et notre planning : \n${joinUrl}`;
 

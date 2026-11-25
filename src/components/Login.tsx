@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { ChefHat, Mail, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 
-export function Login() {
+interface LoginProps {
+  pendingJoinCode?: string | null;
+}
+
+export function Login({ pendingJoinCode }: LoginProps) {
   const { signInWithEmail, signUpWithEmail } = useAuth();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(Boolean(pendingJoinCode));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,10 +49,19 @@ export function Login() {
               BROCOLI
             </h1>
             <p className="text-slate-500">
-              {isSignUp ? 'Créer un compte' : 'Bon retour !'}
+              {pendingJoinCode
+                ? (isSignUp ? 'Créez votre compte pour rejoindre la Maison' : 'Connectez-vous pour rejoindre la Maison')
+                : (isSignUp ? 'Créer un compte' : 'Bon retour !')}
             </p>
           </div>
         </div>
+
+        {pendingJoinCode && (
+          <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-900 leading-relaxed text-center">
+            Invitation Brocoli détectée : code <span className="font-mono font-bold">{pendingJoinCode}</span>.
+            Une fois connecté, votre Maison s'ouvrira automatiquement.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (

@@ -43,11 +43,28 @@ function AppContent() {
   const [joinModalCode, setJoinModalCode] = useState<string | null>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      const joinParam = params.get('join');
-      if (joinParam) return joinParam.trim();
+      const joinParam = params.get('join')?.trim();
+      if (joinParam) {
+        localStorage.setItem('brocoli_pending_join_code', joinParam);
+        return joinParam;
+      }
+      const saved = localStorage.getItem('brocoli_pending_join_code')?.trim();
+      if (saved) return saved;
     } catch {}
     return null;
   });
+
+  const clearPendingJoinCode = () => {
+    setJoinModalCode(null);
+    try {
+      localStorage.removeItem('brocoli_pending_join_code');
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('join')) {
+        url.searchParams.delete('join');
+        window.history.replaceState({}, '', url.toString());
+      }
+    } catch {}
+  };
 
   const { user, loading: authLoading } = useAuth();
   const { 
@@ -124,7 +141,7 @@ function AppContent() {
   }
 
   if (!user) {
-    return <Login />;
+    return <Login pendingJoinCode={joinModalCode} />;
   }
 
   return (
@@ -185,14 +202,8 @@ function AppContent() {
           <HouseholdJoinModal
             isOpen={true}
             initialCode={joinModalCode}
-            onClose={() => setJoinModalCode(null)}
-            onSuccess={() => {
-              setJoinModalCode(null);
-              // Clean URL parameter without reloading
-              const url = new URL(window.location.href);
-              url.searchParams.delete('join');
-              window.history.replaceState({}, '', url.toString());
-            }}
+            onClose={clearPendingJoinCode}
+            onSuccess={clearPendingJoinCode}
           />
         )}
       </main>
