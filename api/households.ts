@@ -14,18 +14,30 @@ import {
   getHouseholdMcpStatus,
   syncHouseholdMirror,
   ackHouseholdMirror,
-} from '../../src/lib/householdBackend';
+} from '../src/lib/householdBackend.js';
 
 function getActionPath(req: VercelRequest): string {
+  const fromQuery = req.query.__action;
+  if (typeof fromQuery === 'string' && fromQuery.trim()) {
+    return fromQuery.replace(/^\/+|\/+$/g, '');
+  }
+  if (Array.isArray(fromQuery) && fromQuery.length > 0) {
+    return fromQuery.join('/').replace(/^\/+|\/+$/g, '');
+  }
+
   const url = new URL(req.url || '/', 'https://localhost');
-  const fromPath = url.pathname.replace(/^\/api\/households\/?/, '').replace(/\/+$/, '');
-  if (fromPath) return fromPath;
-  const slug = req.query.slug;
-  if (Array.isArray(slug)) return slug.join('/');
-  return typeof slug === 'string' ? slug : '';
+  const qAction = url.searchParams.get('__action');
+  if (qAction && qAction.trim()) {
+    return qAction.replace(/^\/+|\/+$/g, '');
+  }
+
+  return url.pathname
+    .replace(/^\/api\/households\/?/, '')
+    .replace(/\/+$/, '');
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   const action = getActionPath(req);
   const userJwt = extractBearerToken(req.headers.authorization);
 
@@ -38,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const identityOk = await verifyCallerIdentity(userJwt, userId);
       if (!identityOk) {
-        return res.status(401).json({ success: false, error: 'Identité utilisateur non vérifiée.' });
+        return res.status(401).json({ success: false, error: 'Identité utilisateur non vérifiée. Reconnectez-vous.' });
       }
       const household = await getOrCreateMyHousehold(userId, email, userJwt);
       return res.status(200).json({ success: true, household });

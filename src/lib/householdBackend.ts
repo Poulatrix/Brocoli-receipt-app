@@ -11,8 +11,8 @@ import {
   HouseholdMcpConfig,
   McpPendingMutation,
   DEFAULT_ROLE_COMPETENCES,
-} from "../types";
-import type { HouseholdMirrorData } from "./mcpService";
+} from "../types.js";
+import type { HouseholdMirrorData } from "./mcpService.js";
 
 export interface McpSecretRecord {
   tokenHash: string;
@@ -82,9 +82,13 @@ export function extractBearerToken(authHeader?: string | string[]): string | und
 
 export async function verifyCallerIdentity(userJwt: string | undefined, expectedUserId: string): Promise<boolean> {
   if (!expectedUserId) return false;
-  if (!userJwt) return true;
   const { url, anonKey, serviceKey } = getSupabaseEnv();
   const key = serviceKey || anonKey;
+  if (!userJwt) {
+    // Sur Vercel avec Supabase configuré, exiger un jeton de session valide
+    if (IS_VERCEL && url && key) return false;
+    return true;
+  }
   if (!url || !key) return true;
   try {
     const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });

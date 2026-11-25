@@ -1,10 +1,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { renderWidgetHtml, WidgetMealData } from '../../src/lib/widgetRenderer';
-import { getDishImage } from '../../src/lib/dishImages';
-import { getServerSupabase, getParisTodayISO } from '../../src/lib/householdBackend';
+import { renderWidgetHtml, WidgetMealData } from '../src/lib/widgetRenderer.js';
+import { getDishImage } from '../src/lib/dishImages.js';
+import { getServerSupabase, getParisTodayISO } from '../src/lib/householdBackend.js';
 
 function getAction(req: VercelRequest): string {
+  const fromQuery = req.query.__action;
+  if (typeof fromQuery === 'string' && fromQuery.trim()) {
+    return fromQuery.replace(/^\/+|\/+$/g, '');
+  }
+  if (Array.isArray(fromQuery) && fromQuery.length > 0) {
+    return fromQuery.join('/').replace(/^\/+|\/+$/g, '');
+  }
   const url = new URL(req.url || '/', 'https://localhost');
+  const qAction = url.searchParams.get('__action');
+  if (qAction && qAction.trim()) {
+    return qAction.replace(/^\/+|\/+$/g, '');
+  }
   return url.pathname
     .replace(/^\/api\/widget\/?/, '')
     .replace(/^\/widget\/?/, '')
@@ -76,6 +87,7 @@ async function fetchTodayMealFromSupabase(userId?: string, dateParam?: string): 
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const action = getAction(req);
+  const mode = typeof req.query.__mode === 'string' ? req.query.__mode : undefined;
   const userId = typeof req.query.user === 'string' && req.query.user.trim() ? req.query.user.trim() : undefined;
   const dateParam = typeof req.query.date === 'string' ? req.query.date : undefined;
   const targetDate = dateParam || getParisTodayISO();
@@ -93,7 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  if (action === 'today' && req.url?.includes('/api/widget/')) {
+  if (action === 'today' && (mode === 'api' || (!mode && req.url?.includes('/api/widget')))) {
     const meal = await fetchTodayMealFromSupabase(userId, dateParam);
     return res.status(200).json({ date: targetDate, hasMeal: Boolean(meal), meal });
   }
@@ -125,7 +137,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 })();`);
   }
 
-  // HTML widget view (/widget/today or /widget/today.html)
   const sizeParam = (typeof req.query.size === 'string' ? req.query.size : (typeof req.query.format === 'string' ? req.query.format : 'small')) as any;
   const themeParam = typeof req.query.theme === 'string' ? (req.query.theme as any) : 'auto';
   const appUrl = resolveAppUrl(req);

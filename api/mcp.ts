@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createBrocoliMcpServer, HouseholdMirrorData } from '../src/lib/mcpService';
+import { createBrocoliMcpServer, HouseholdMirrorData } from '../src/lib/mcpService.js';
 import {
   extractBearerToken,
   authenticateMcpBearerToken,
@@ -9,7 +9,7 @@ import {
   saveMirrorRecord,
   hasMemberCompetence,
   getParisTodayISO,
-} from '../src/lib/householdBackend';
+} from '../src/lib/householdBackend.js';
 
 function applyCorsHeaders(req: VercelRequest, res: VercelResponse) {
   const reqOrigin = typeof req.headers.origin === 'string' ? req.headers.origin : '';

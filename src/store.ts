@@ -213,12 +213,14 @@ export const useStore = create<StoreState & StoreActions>()(
         const res = await fetch(`/api/households/my?userId=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}`, {
           headers,
         });
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-          throw new Error("L'API Maison Familiale (/api/households/my) n'a pas répondu en JSON.");
+        const rawText = await res.text();
+        let data: any = null;
+        try {
+          data = rawText ? JSON.parse(rawText) : null;
+        } catch {
+          throw new Error(`L'API Maison Familiale (/api/households/my) a répondu avec le statut HTTP ${res.status} (format non-JSON).`);
         }
-        const data = await res.json();
-        if (data.success && data.household) {
+        if (data?.success && data.household) {
           set({
             household: data.household,
             householdLoading: false,
@@ -232,7 +234,7 @@ export const useStore = create<StoreState & StoreActions>()(
         }
         set({
           householdLoading: false,
-          householdError: data?.error || "Impossible de charger votre Maison Familiale.",
+          householdError: data?.error || `Impossible de charger votre Maison Familiale (HTTP ${res.status}).`,
           householdNeedsSetup: Boolean(data?.needsSetup),
         });
       } catch (err: any) {
@@ -258,8 +260,14 @@ export const useStore = create<StoreState & StoreActions>()(
           headers,
           body: JSON.stringify({ code, userId, email, nom, role })
         });
-        const data = await res.json();
-        if (data.success && data.household) {
+        const rawText = await res.text();
+        let data: any = null;
+        try {
+          data = rawText ? JSON.parse(rawText) : null;
+        } catch {
+          throw new Error(`L'API /api/households/join a répondu avec le statut HTTP ${res.status} (format non-JSON).`);
+        }
+        if (data?.success && data.household) {
           set({
             household: data.household,
             householdLoading: false,
@@ -276,7 +284,7 @@ export const useStore = create<StoreState & StoreActions>()(
             householdLoading: false,
             householdNeedsSetup: Boolean(data?.needsSetup),
           });
-          return { success: false, error: data.error || "Impossible de rejoindre cette Maison." };
+          return { success: false, error: data?.error || `Impossible de rejoindre cette Maison (HTTP ${res.status}).` };
         }
       } catch (err: any) {
         set({ householdLoading: false });

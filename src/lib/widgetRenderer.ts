@@ -1,4 +1,4 @@
-import { getDishImage } from './dishImages';
+import { getDishImage } from './dishImages.js';
 
 export interface WidgetMealData {
   nom: string;

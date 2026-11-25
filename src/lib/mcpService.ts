@@ -10,8 +10,8 @@ import type {
   PlanningEntry,
   ShoppingItem,
   McpPendingMutation
-} from "../types";
-import type { WidgetMealData } from "./widgetRenderer";
+} from "../types.js";
+import type { WidgetMealData } from "./widgetRenderer.js";
 
 export interface HouseholdMirrorData {
   recettes: Recette[];

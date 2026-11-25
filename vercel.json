@@ -31,12 +31,16 @@
   ],
   "rewrites": [
     {
-      "source": "/widget/(.*)",
-      "destination": "/api/widget/$1"
+      "source": "/api/households/:action*",
+      "destination": "/api/households?__action=:action*"
     },
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/widget/:action*",
+      "destination": "/api/widget?__action=:action*&__mode=api"
+    },
+    {
+      "source": "/widget/:action*",
+      "destination": "/api/widget?__action=:action*&__mode=html"
     },
     {
       "source": "/((?!api/|widget/|assets/|sw\\.js$|manifest\\.webmanifest$|logo_brocoli\\.jpg$|logo-2\\.png$|icon\\.jpg$|favicon\\.ico$).*)",
